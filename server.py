@@ -152,7 +152,13 @@ async def analyze(
     detector: bool = Form(True),
     sim_hail: Optional[int] = Form(None),
     sim_water: Optional[int] = Form(None),
+    nocache: bool = Form(False),
+    request: Request = None,
 ):
+    # "Fresh run": skip reused AI answers. Also accepted as ?nocache=1 on the URL.
+    query_nocache = request is not None and \
+        request.query_params.get("nocache", "").lower() in ("1", "true", "yes")
+    use_cache = not (nocache or query_nocache)
     address = address.strip()
     if len(address) < 3:
         raise HTTPException(422, "Please enter the address of your site.")
@@ -182,7 +188,8 @@ async def analyze(
     simulate = None
     if sim_hail is not None or sim_water is not None:
         simulate = {"hail": max(0, min(2, sim_hail or 0)), "water": max(0, min(2, sim_water or 0))}
-    options = {"keyframes": keyframes, "detector_on": bool(detector), "simulate": simulate}
+    options = {"keyframes": keyframes, "detector_on": bool(detector), "simulate": simulate,
+               "use_cache": use_cache}
     job = Job(address, options, target, name)
     _add(job)
     WORK.put(job)
@@ -209,7 +216,12 @@ def keyframe(job_id: str, n: int, boxes: int = 1):
     imgs = job.images["keyframes"]
     if not 0 <= n < len(imgs):
         raise HTTPException(404, "No such frame.")
-    img = imgs[n]
+    # Display-only clean-up (the AI already had the plain frame), made once per frame and
+    # kept with the job; boxes are drawn afterwards so they stay crisp.
+    shown = job.images.setdefault("display", {})
+    if n not in shown:
+        shown[n] = render.for_display(imgs[n])
+    img = shown[n]
     if boxes:
         img = render.with_boxes(img, [f for f in job.result["findings"] if f["frame"] == n],
                                 [p for p in job.result.get("people", []) if p["frame"] == n])
@@ -222,7 +234,7 @@ def crop(job_id: str, finding_id: int):
     found = next((f for f in job.result["findings"] if f["id"] == finding_id), None)
     if found is None:
         raise HTTPException(404, "No such object.")
-    return _jpeg(render.encode(render.crop(job.images["keyframes"][found["frame"]], found["box"]), 88))
+    return _jpeg(render.display_crop(job.images["keyframes"][found["frame"]], found["box"]))
 
 
 @app.get("/api/jobs/{job_id}/thumbs/{i}.jpg")

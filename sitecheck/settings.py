@@ -11,6 +11,16 @@ WEB_OUT = ROOT / "web" / "out"
 DETECTOR_WEIGHTS = ROOT / "models" / "yolo11n.pt"
 
 
+def _detector_label(weights: Path) -> str:
+    """'yolo11n.pt' -> 'YOLO11n'. Taken from the file name, so the label shown on the
+    website can never drift from the model that is really loaded."""
+    stem = weights.stem
+    return "YOLO" + stem[4:] if stem.lower().startswith("yolo") else stem
+
+
+DETECTOR_LABEL = _detector_label(DETECTOR_WEIGHTS)
+
+
 def _read_dotenv(path: Path) -> None:
     """Loads KEY=value lines from .env into the environment. Never prints anything."""
     if not path.exists():

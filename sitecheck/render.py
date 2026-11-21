@@ -84,6 +84,81 @@ def crop(img: np.ndarray, box: list, min_side: int = 220) -> np.ndarray:
     return img[b:d, a:c]
 
 
+# --- Display-only clean-up -------------------------------------------------------------
+# Only people see these pictures. The AI keeps getting the plain, small frames (cheap, and
+# its answers were checked on those), so nothing below may run before an AI call.
+DIM_FULL, DIM_NONE = 100, 140   # mean lightness (0-255): full clean-up below, none above
+DISPLAY_PX = 640                # small crops are enlarged to this longest side
+DISPLAY_QUALITY = 92            # few, small pictures: worth a high JPEG quality
+
+
+def dimness(img: np.ndarray) -> float:
+    """0 for a daylight picture, 1 for a night one, smoothly in between. Judged on the
+    picture as stored, i.e. after the gamma lift in frames.brighten."""
+    light = float(cv2.cvtColor(img, cv2.COLOR_BGR2LAB)[:, :, 0].mean())
+    return float(np.clip((DIM_NONE - light) / (DIM_NONE - DIM_FULL), 0.0, 1.0))
+
+
+def _denoise(img: np.ndarray, strength: float) -> np.ndarray:
+    # Night frames are grainy; the contrast and sharpening steps would enlarge the grain.
+    # Only a light edge-keeping blur over a 5 px window: phones already smooth night video,
+    # and stronger filters (non-local means) left flat blobs that the 3x enlargement
+    # turned into a watercolour look. Leaves and paving keep their texture this way.
+    return cv2.bilateralFilter(img, 5, 6 + 8 * strength, 3)
+
+
+def _local_contrast(img: np.ndarray, strength: float) -> np.ndarray:
+    """CLAHE on lightness only, so shadows show detail without the colours shifting,
+    then a gentle lift of the mid-tones (bright lamps hardly change)."""
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    light = lab[:, :, 0]
+    # ~128 px tiles whatever the size: smaller tiles turn flat walls and paving blotchy
+    tiles = max(1, round(max(light.shape) / 128))
+    clahe = cv2.createCLAHE(clipLimit=1.0 + 0.5 * strength, tileGridSize=(tiles, tiles))
+    g = 1 - 0.2 * strength
+    lift = np.array([round(255 * (i / 255) ** g) for i in range(256)], np.uint8)
+    lab[:, :, 0] = cv2.LUT(clahe.apply(light), lift)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
+def _enlarge(img: np.ndarray, longest: int) -> np.ndarray:
+    """Lanczos keeps edges crisper than the browser's own stretching; never shrinks."""
+    h, w = img.shape[:2]
+    scale = longest / max(h, w)
+    if scale <= 1:
+        return img
+    return cv2.resize(img, (round(w * scale), round(h * scale)), interpolation=cv2.INTER_LANCZOS4)
+
+
+def _sharpen(img: np.ndarray, amount: float) -> np.ndarray:
+    """Unsharp mask on lightness only: colour noise is not sharpened, and a small radius
+    with a small amount gives no visible halos."""
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    light = lab[:, :, 0]
+    blur = cv2.GaussianBlur(light, (0, 0), 1.2)
+    lab[:, :, 0] = cv2.addWeighted(light, 1 + amount, blur, -amount, 0)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
+def for_display(img: np.ndarray, longest: int = 0, night: float = None) -> np.ndarray:
+    """A clearer copy for people: night pictures are cleaned, lifted and sharpened;
+    daylight ones only get a light sharpening. longest > 0 enlarges small pictures.
+    night: the dimness to use (default: this picture's own)."""
+    s = dimness(img) if night is None else night
+    if s > 0:
+        img = _local_contrast(_denoise(img, s), s)
+    if longest:
+        img = _enlarge(img, longest)
+    return _sharpen(img, 0.2 + 0.3 * s)
+
+
+def display_crop(img: np.ndarray, box: list) -> bytes:
+    """The crop shown on the page: cleaned at its own size (cheaper, and the grain is still
+    fine there), then enlarged, as a high-quality JPEG. Night or day is judged on the
+    whole frame: a car under a street lamp is still a grainy night picture."""
+    return encode(for_display(crop(img, box), DISPLAY_PX, dimness(img)), DISPLAY_QUALITY)
+
+
 def filmstrip(samples: list, thumbs: list, cols: int = 12, w: int = 128) -> bytes:
     """One overview image: every sampled frame, picked ones framed in green with their
     number, skipped ones grey with the reason. Portrait videos get tall, narrow tiles and

@@ -34,8 +34,8 @@ def _levels(hazards: dict) -> dict:
 
 
 def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAULT,
-        detector_on: bool = True, simulate=None, progress=lambda text: None,
-        ask=ai.ask) -> tuple:
+        detector_on: bool = True, simulate=None, use_cache: bool = True,
+        progress=lambda text: None, ask=ai.ask) -> tuple:
     """Returns (result dict for the website, images dict kept in server memory)."""
     started = time.perf_counter()
     ledger = Ledger()
@@ -79,7 +79,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
     # 3) free detector: vehicles + people, blur people (free)
     progress("Blurring people and finding vehicles on this computer")
     findings, people, people_total, detector_ok = [], [], 0, True
-    with ledger.step("Find vehicles and people, blur people (YOLO11n, local)") as row:
+    with ledger.step(f"Find vehicles and people, blur people ({settings.DETECTOR_LABEL}, local)") as row:
         try:
             for meta, img in zip(key_meta, key_imgs):
                 found = privacy.detect(img)
@@ -95,7 +95,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                             findings.append({"frame": meta["index"], "t": meta["t"],
                                              "kind": "vehicle", "box": d["box"],
                                              "confidence": d["confidence"],
-                                             "source": "local detector", "model": "YOLO11n",
+                                             "source": "local detector", "model": settings.DETECTOR_LABEL,
                                              "detail": d["label"]})
             row["note"] = f"{people_total} {'person' if people_total == 1 else 'people'} blurred"
         except privacy.DetectorMissing:
@@ -126,7 +126,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                 sent_sizes["cheap"].append(size)
             try:
                 ans = ask(settings.CHEAP_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
-                          settings.CHEAP_MAX_OUT)
+                          settings.CHEAP_MAX_OUT, use_cache=use_cache)
                 _book(row, ans, ai_info, len(imgs))
                 objects, unsure_frames = vision.read_answer(ans["text"], kinds, len(imgs),
                                                             sent_sizes["cheap"])
@@ -153,7 +153,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                     sent_sizes["strong"].append(size)
                 try:
                     ans = ask(settings.STRONG_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
-                              settings.STRONG_MAX_OUT)
+                              settings.STRONG_MAX_OUT, use_cache=use_cache)
                     _book(row, ans, ai_info, len(imgs))
                     objects, _ = vision.read_answer(ans["text"], kinds, len(imgs), sent_sizes["strong"])
                     redo = set(order)
@@ -193,7 +193,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "asked": [{"kind": k, "name": catalogue.KINDS[k]["name"], "find": catalogue.KINDS[k]["find"],
                    "hazard": catalogue.KINDS[k]["hazard"], "weight": catalogue.KINDS[k]["weight"]}
                   for k in kinds],
-        "not_asked": _not_asked(levels, kinds, detector_on and detector_ok),
+        "not_asked": _not_asked(levels, kinds, detector_on and detector_ok, hazards),
         "video": video_info,
         "frames": {"in_video": video_info["frames_in_video"], "sampled": len(samples),
                    "usable": usable, "picked": len(picked),
@@ -208,9 +208,9 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "uncertain_count": len(unsure),
         "ai": ai_info,
         "ledger": ledger.rows,
-        "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs)),
+        "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs), ai_info["status"]),
         "settings": {"keyframes": keyframes, "detector": detector_on,
-                     "simulated": bool(simulate)},
+                     "simulated": bool(simulate), "use_cache": use_cache},
         "seconds": round(time.perf_counter() - started, 1),
     }
     images = {"keyframes": key_imgs, "thumbs": [s.thumb for s in samples]}
@@ -219,9 +219,18 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
 
 def _book(row: dict, ans: dict, ai_info: dict, n_images: int) -> None:
     row.update(model=ans["model"], tokens_in=ans["tokens_in"], tokens_out=ans["tokens_out"],
-               usd=ans["usd"])
-    if ans.get("cached"):
-        row["note"] = "answer reused from cache (free)"
+               usd=ans["usd"], cached=bool(ans.get("cached")), billed=bool(ans.get("billed", True)),
+               measured_usd=_measured(ans))
+    if row["cached"]:
+        row.update(first_run_usd=ans.get("first_run_usd"),
+                   first_run_tokens_in=ans.get("first_run_tokens_in"),
+                   first_run_tokens_out=ans.get("first_run_tokens_out"))
+        first = row["measured_usd"]
+        row["note"] = ("answer reused from cache; first run billed " + _usd_text(first)
+                       if first is not None else
+                       "answer reused from cache; first run cost not recorded")
+    elif not row["billed"]:
+        row["note"] = "OpenRouter reported no cost: worked out from the price list"
     retries = [a for a in ans.get("attempts", []) if a["status"] != 200]
     if retries:
         row["note"] = f"answered after {len(retries)} busy/failed attempt(s)"
@@ -231,23 +240,53 @@ def _book(row: dict, ans: dict, ai_info: dict, n_images: int) -> None:
         ai_info["models"].append(ans["model"])
 
 
-def _not_asked(levels: dict, kinds: list, detector_on: bool) -> list:
+def _measured(ans: dict):
+    """What OpenRouter really billed for this answer, now or on the run that first paid
+    for it. None when no bill was recorded (never 0, which would look like 'free')."""
+    if ans.get("cached"):
+        return ans.get("first_run_usd") if ans.get("first_run_billed", True) else None
+    return ans["usd"] if ans.get("billed", True) else None
+
+
+def _usd_text(x: float) -> str:
+    return f"${x:.5f}" if x < 0.001 else f"${x:.4f}"
+
+
+def _not_asked(levels: dict, kinds: list, detector_on: bool, hazards=None) -> list:
     out = []
     for k, item in catalogue.KINDS.items():
         if k in kinds:
             continue
+        mapped = (hazards or {}).get(item["hazard"], {}).get("available", True)
         if k == "vehicle" and detector_on and levels.get("hail", 0) >= 1:
             reason = "found by the free local detector instead"
+        elif not mapped:
+            # a map that did not answer tells us nothing: skipped, but not "low"
+            reason = f"the {item['hazard']} map did not answer, so this was not checked (not the same as low)"
         else:
             reason = f"{item['hazard']} level is 0 here"
         out.append({"kind": k, "name": item["name"], "reason": reason})
     return out
 
 
-def _costs(rows: list, sizes: dict, video: dict, n_key: int) -> dict:
+def _measured_costs(rows: list, ai_status: str) -> dict:
+    """What the AI answers of this check really cost. A reused (cached) answer is free now,
+    so its first-run bill is counted instead; then a re-run shows the same real cost."""
+    answered = [r for r in rows if r["type"] == "AI" and r["model"]]
+    known = [r["measured_usd"] for r in answered if r.get("measured_usd") is not None]
+    return {
+        "ai_status": ai_status,            # "ok", "not needed", "off" or "failed"
+        "ai_calls": len(answered),
+        "measured_usd": sum(known) if known else None,
+        "all_measured": bool(answered) and len(known) == len(answered),
+        "this_run_usd": sum(r["usd"] for r in answered),
+        "any_cached": any(r.get("cached") for r in answered),
+        "all_cached": bool(answered) and all(r.get("cached") for r in answered),
+    }
+
+
+def _costs(rows: list, sizes: dict, video: dict, n_key: int, ai_status: str = "ok") -> dict:
     """Measured cost, plus the same estimate rule applied to three designs."""
-    measured = sum(r["usd"] for r in rows)
-    calls = sum(1 for r in rows if r["type"] == "AI" and r["model"])
     ours = ai.estimate(settings.CHEAP_MODEL, sizes["cheap"], 1 if sizes["cheap"] else 0)
     strong = ai.estimate(settings.STRONG_MODEL, sizes["strong"], 1 if sizes["strong"] else 0)
     ours_usd = ours["usd"] + strong["usd"]
@@ -269,7 +308,7 @@ def _costs(rows: list, sizes: dict, video: dict, n_key: int) -> dict:
     ]
     for b in bars:
         b["times"] = round(b["usd"] / base, 1) if base else None
-    return {"measured_usd": measured, "estimate_usd": ours_usd, "ai_calls": calls,
+    return {**_measured_costs(rows, ai_status), "estimate_usd": ours_usd,
             "comparison": bars,
             "rule": "Same estimate for all three: 400 prompt tokens per call, Google's image "
                     "token rule (258 tokens per 768-px tile), 40 output tokens per frame, "

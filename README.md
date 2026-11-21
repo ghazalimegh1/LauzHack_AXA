@@ -68,7 +68,10 @@ Both pages show the newest finished check.
 
 Busy or broken model answers are retried after 2 s and 5 s, then sent to a fallback
 (flash-lite -> gemini-3.1-flash-lite -> gemini-2.5-flash). Answers are cached, so running
-the same check again costs nothing. The storm countdown uses the free Open-Meteo forecast.
+the same check again costs nothing extra; the page then still shows what the first run was
+billed. "Fresh run" on the details page (or `POST /api/analyze?nocache=1`) asks the AI again.
+The detector label shown everywhere comes from the weights file name
+(`settings.DETECTOR_LABEL`). The storm countdown uses the free Open-Meteo forecast.
 
 ## Measured cost (2026-11-21, address "Route Cantonale 11, 1015 Lausanne")
 

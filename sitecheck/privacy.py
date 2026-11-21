@@ -33,7 +33,7 @@ def _load():
     with _lock:
         if _model is None:  # load once; later frames reuse it
             if not settings.DETECTOR_WEIGHTS.exists():
-                raise DetectorMissing("models/yolo11n.pt is missing")
+                raise DetectorMissing(f"models/{settings.DETECTOR_WEIGHTS.name} is missing")
             from ultralytics import YOLO   # heavy import, only when first needed
             _model = YOLO(str(settings.DETECTOR_WEIGHTS))
     return _model

@@ -74,7 +74,7 @@ def test_analyze_poll_latest_and_images(client):
     job_id = upload(client, keyframes="8", detector="false", sim_hail="2", sim_water="0")
     body = wait(client, job_id)
     assert body["status"] == "done"
-    assert body["result"]["options"] == {"keyframes": 8, "detector_on": False}
+    assert body["result"]["options"] == {"keyframes": 8, "detector_on": False, "use_cache": True}
     assert body["result"]["simulate"] == {"hail": 2, "water": 0}
     assert client.get("/api/latest").json()["id"] == job_id
     for path in ("keyframes/0.jpg", "keyframes/0.jpg?boxes=0", "crops/0.jpg", "thumbs/0.jpg",
@@ -84,6 +84,20 @@ def test_analyze_poll_latest_and_images(client):
     assert client.get(f"/api/jobs/{job_id}/keyframes/5.jpg").status_code == 404
     video = client.get(f"/api/jobs/{job_id}/video")
     assert video.status_code == 200 and video.content == b"not really a video"
+
+
+def test_fresh_run_field_skips_the_cache(client):
+    body = wait(client, upload(client, nocache="true"))
+    assert body["result"]["options"]["use_cache"] is False
+    body = wait(client, upload(client, nocache="false"))
+    assert body["result"]["options"]["use_cache"] is True
+
+
+def test_fresh_run_also_works_from_the_url(client):
+    files = {"video": ("walk.mov", b"not really a video", "video/quicktime")}
+    r = client.post("/api/analyze?nocache=1", data={"address": "Bern Bundesplatz"}, files=files)
+    assert r.status_code == 200, r.text
+    assert wait(client, r.json()["job_id"])["result"]["options"]["use_cache"] is False
 
 
 def test_forecast_endpoint(client, monkeypatch):

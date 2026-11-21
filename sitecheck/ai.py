@@ -66,16 +66,31 @@ def price(model: str, tokens_in: int, tokens_out: int) -> float:
     return tokens_in * p_in / 1e6 + tokens_out * p_out / 1e6
 
 
-def ask(model: str, parts: list, max_tokens: int, post=None, sleep=time.sleep) -> dict:
+def _from_cache(hit: dict) -> dict:
+    """A reused answer costs nothing now, but we keep what the first run was billed so the
+    page can still show a real cost. Old entries without a cost give None (unknown), not 0."""
+    first_usd = hit.get("usd")
+    return {"text": hit["text"], "model": hit["model"], "tokens_in": 0, "tokens_out": 0,
+            "usd": 0.0, "billed": True, "cached": True, "attempts": [],
+            "first_run_usd": float(first_usd) if isinstance(first_usd, (int, float)) else None,
+            "first_run_billed": bool(hit.get("billed", first_usd is not None)),
+            "first_run_tokens_in": hit.get("tokens_in"),
+            "first_run_tokens_out": hit.get("tokens_out")}
+
+
+def ask(model: str, parts: list, max_tokens: int, post=None, sleep=time.sleep,
+        use_cache: bool = True) -> dict:
     """Sends text and JPEG images (in order) and returns
-    {"text", "model", "tokens_in", "tokens_out", "usd", "cached", "attempts"}.
+    {"text", "model", "tokens_in", "tokens_out", "usd", "billed", "cached", "attempts"},
+    plus "first_run_usd", "first_run_tokens_in/out" when the answer came from the cache.
+    use_cache=False skips reading the cache (a fresh, paid answer) but still saves it.
     Raises AIError when every model in the chain failed."""
     post = post or _http_post
     chain = [model] + settings.FALLBACKS.get(model, [])
     key = cache.make_key("v1", model, max_tokens, *parts)
-    hit = cache.get("ai", key)
-    if hit is not None:
-        return {**hit, "cached": True, "usd": 0.0, "attempts": []}
+    hit = cache.get("ai", key) if use_cache else None
+    if hit is not None and hit.get("text"):
+        return _from_cache(hit)
     attempts = []
     for m in chain:
         waits = (0,) + tuple(settings.RETRY_WAITS_S)
@@ -94,10 +109,12 @@ def ask(model: str, parts: list, max_tokens: int, post=None, sleep=time.sleep) -
                 t_in = int(usage.get("prompt_tokens") or 0)
                 t_out = int(usage.get("completion_tokens") or 0)
                 usd = usage.get("cost")
-                usd = float(usd) if isinstance(usd, (int, float)) else price(m, t_in, t_out)
+                # billed=False marks a cost we had to work out from the price list ourselves
+                billed = isinstance(usd, (int, float))
+                usd = float(usd) if billed else price(m, t_in, t_out)
                 attempts.append({"model": m, "status": 200})
                 out = {"text": text, "model": m, "tokens_in": t_in, "tokens_out": t_out,
-                       "usd": usd, "cached": False, "attempts": attempts}
+                       "usd": usd, "billed": billed, "cached": False, "attempts": attempts}
                 cache.put("ai", key, {k: v for k, v in out.items() if k not in ("cached", "attempts")})
                 return out
             attempts.append({"model": m, "status": status})

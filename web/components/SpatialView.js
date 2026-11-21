@@ -6,7 +6,6 @@
 // appeared in the walk. Plain SVG, no 3D library, no measured positions.
 
 import { useMemo, useRef, useState } from "react";
-import { img } from "../lib/api";
 import { RISK, clock, hazardWord, lower, pct } from "../lib/format";
 
 const D = { x: 110, y: -70 };            // depth direction of the oblique drawing
@@ -52,7 +51,21 @@ function placePins(points, duration) {
     const over = row.length ? row[row.length - 1].x - max : 0;
     if (over > 0) row.forEach((p) => { p.x -= over; });
   });
+  markCrowdedLabels(placed);
   return placed;
+}
+
+// A label runs to the right of its pin. If the next pin on the same layer sits inside that
+// text, the label is hidden (the pin row below the drawing still names every pin).
+function markCrowdedLabels(placed) {
+  Object.keys(LAYER_Y).forEach((layer) => {
+    const row = placed.filter((p) => p.layer === layer).sort((a, b) => a.x - b.x);
+    row.forEach((p, i) => {
+      const next = row[i + 1];
+      const textWidth = 30 + lower(p.name).length * 7.5;
+      p.crowded = Boolean(next) && next.x - p.x < textWidth;
+    });
+  });
 }
 
 // Uncertain finds never reach this view: the backend leaves them out.
@@ -60,7 +73,7 @@ function colourOf(p) {
   return RISK[p.label] || RISK.none;
 }
 
-export default function SpatialView({ result, jobId }) {
+export default function SpatialView({ result }) {
   const { weak_points: points = [], hazards = {}, video = {} } = result;
   const pins = useMemo(() => placePins(points, video.duration_s), [points, video.duration_s]);
   const [sel, setSel] = useState(0);
@@ -73,7 +86,6 @@ export default function SpatialView({ result, jobId }) {
   const dots = hailDots(hail === 2 ? 110 : hail === 1 ? 48 : 0);
   const flood = water === 2 ? 26 : water === 1 ? 14 : 0;
   const current = pins[Math.min(sel, pins.length - 1)];
-  const best = result.findings.find((f) => f.id === current.best);
 
   function select(i, focus) {
     const n = (i + pins.length) % pins.length;
@@ -173,7 +185,7 @@ export default function SpatialView({ result, jobId }) {
                     <text x={p.x} y={p.y + 5} textAnchor="middle" fontFamily="var(--head)" fontWeight="700"
                       fontSize="15" fill={p.label === "low" ? "#212529" : "#FFFFFF"}>{p.n}</text>
                   </g>
-                  <text className="pin-label" x={right ? p.x + 24 : p.x - 24} y={p.y + 5} textAnchor={right ? "start" : "end"}>
+                  <text className={`pin-label${p.crowded ? " crowded" : ""}`} x={right ? p.x + 24 : p.x - 24} y={p.y + 5} textAnchor={right ? "start" : "end"}>
                     {lower(p.name)}
                   </text>
                 </g>
@@ -202,11 +214,6 @@ export default function SpatialView({ result, jobId }) {
       </div>
 
       <aside className="panel" aria-live="polite">
-        {best && (
-          <div className="photo">
-            <img src={img.crop(jobId, best.id)} alt={`${current.name}, seen in your video`} />
-          </div>
-        )}
         <div className="body">
           <span className={`tag ${current.label}`}>{current.label} risk</span>
           <h3>{current.n}. {current.name}{current.count > 1 ? ` (${current.count}×)` : ""}</h3>

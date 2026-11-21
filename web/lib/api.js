@@ -42,12 +42,14 @@ export async function suggest(text) {
   return body.suggestions || [];
 }
 
-export async function startCheck({ address, file, keyframes, detector, simulate }) {
+export async function startCheck({ address, file, keyframes, detector, simulate, nocache }) {
   const data = new FormData();
   data.append("address", address);
   data.append("video", file);
   if (keyframes) data.append("keyframes", String(keyframes));
   if (detector !== undefined) data.append("detector", detector ? "true" : "false");
+  // Fresh run: the server asks the AI again instead of reusing a cached answer.
+  if (nocache !== undefined) data.append("nocache", nocache ? "true" : "false");
   if (simulate) {
     data.append("sim_hail", String(simulate.hail));
     data.append("sim_water", String(simulate.water));

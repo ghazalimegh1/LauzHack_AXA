@@ -1,7 +1,7 @@
 """Model calls: retry on busy/broken answers, then fall back, and cache answers."""
 import pytest
 
-from sitecheck import ai, settings, vision
+from sitecheck import ai, cache, settings, vision
 
 OK = {"choices": [{"message": {"content": '{"objects": [], "unsure_frames": []}'}}],
       "usage": {"prompt_tokens": 1000, "completion_tokens": 20, "cost": 0.0001}}
@@ -67,11 +67,38 @@ def test_repeat_question_comes_from_cache_for_free():
     assert second["text"] == first["text"]
 
 
+def test_cache_hit_keeps_the_first_runs_bill():
+    run([(200, OK)])
+    second, _, _ = run([])
+    assert second["usd"] == 0.0 and second["tokens_in"] == 0
+    assert second["first_run_usd"] == 0.0001
+    assert second["first_run_tokens_in"] == 1000 and second["first_run_tokens_out"] == 20
+
+
+def test_old_cache_entry_without_cost_is_unknown_not_free():
+    key = cache.make_key("v1", settings.CHEAP_MODEL, 100, "hello")
+    cache.put("ai", key, {"text": "{}", "model": settings.CHEAP_MODEL})
+    out, calls, _ = run([])
+    assert calls == [] and out["cached"] and out["first_run_usd"] is None
+
+
+def test_fresh_run_asks_again_and_rewrites_the_cache():
+    run([(200, OK)])
+    newer = {**OK, "usage": {"prompt_tokens": 900, "completion_tokens": 10, "cost": 0.0002}}
+    server, waits = FakeServer([(200, newer)]), []
+    fresh = ai.ask(settings.CHEAP_MODEL, ["hello"], 100, post=server, sleep=waits.append,
+                   use_cache=False)
+    assert server.calls == [settings.CHEAP_MODEL]
+    assert not fresh["cached"] and fresh["usd"] == 0.0002
+    again, calls, _ = run([])
+    assert calls == [] and again["first_run_usd"] == 0.0002
+
+
 def test_price_fallback_when_no_cost_reported():
     no_cost = {"choices": [{"message": {"content": "{}"}}],
                "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 0}}
     out, _, _ = run([(200, no_cost)])
-    assert out["usd"] == pytest.approx(0.10)
+    assert out["usd"] == pytest.approx(0.10) and out["billed"] is False
 
 
 def test_parse_answer_with_fences_and_bad_entries():
@@ -110,3 +137,21 @@ def test_estimate_rule_is_shared():
     pro = ai.estimate(settings.BASELINE_MODEL, [(512, 288)] * 6, 1)
     assert pro["tokens_in"] == cheap["tokens_in"]          # same frames, same tokens in
     assert pro["usd"] > cheap["usd"] * 5
+
+
+def test_check_cost_counts_first_run_bill_for_reused_answers():
+    from sitecheck import pipeline
+    row = {"type": "AI", "model": settings.CHEAP_MODEL, "usd": 0.0, "cached": True,
+           "measured_usd": 0.0003}
+    fresh = {"type": "AI", "model": settings.STRONG_MODEL, "usd": 0.0002, "cached": False,
+             "measured_usd": 0.0002}
+    c = pipeline._measured_costs([row, fresh], "ok")
+    assert c["measured_usd"] == pytest.approx(0.0005) and c["this_run_usd"] == 0.0002
+    assert c["all_measured"] and c["any_cached"] and not c["all_cached"]
+    unknown = pipeline._measured_costs([{**row, "measured_usd": None}], "ok")
+    assert unknown["measured_usd"] is None and not unknown["all_measured"]
+    assert pipeline._measured_costs([], "not needed")["ai_calls"] == 0
+
+
+def test_detector_label_comes_from_the_weights_file():
+    assert settings.DETECTOR_LABEL == "YOLO" + settings.DETECTOR_WEIGHTS.stem[4:]
