@@ -112,7 +112,10 @@ def test_parse_find_drops_bad_entries():
 def test_importance_follows_the_map():
     from frugal import objects
     hz = hazards.from_levels({"water": 0, "hail": 2})
-    assert objects.importance("vehicle", hz) == (6, "high")
+    assert objects.importance("vehicle", hz) == (8, "high")
+    # Vehicles count as high risk already at a medium hail level, and not at all without hail.
+    assert objects.importance("vehicle", hazards.from_levels({"water": 0, "hail": 1})) == (4, "high")
+    assert objects.importance("vehicle", hazards.from_levels({"water": 2, "hail": 0}))[1] == "not relevant here"
     assert objects.importance("basement_opening", hz) == (0, "not relevant here")
     assert "basement_opening" not in objects.to_ask(hz)
     assert objects.to_ask(hazards.from_levels({"water": 0, "hail": 0})) == []

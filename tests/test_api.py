@@ -144,3 +144,33 @@ def test_fair_baseline_differs_only_in_model_price():
     price = lambda m, ref: (config.PRICES.get(m) or config.PRICES[ref])[0]  # noqa: E731
     ratio = price(config.NAIVE_MODEL, "claude-sonnet-5-5") / price(config.CHEAP_MODEL, "claude-haiku-5-5")
     assert fr["same_frames_strong_usd"] == pytest.approx(fr["ours_usd_est"] * ratio)
+
+
+def test_storm_forecast_rules():
+    # Pure function: fake hourly forecast, no internet needed.
+    from frugal import weather
+    t0 = 1_800_000_000
+    calm = {"time": [t0 + 3600 * i for i in range(4)], "weather_code": [3, 61, 61, 2],
+            "wind_gusts_10m": [20, 35, 40, 15], "precipitation": [0, 1, 1, 0]}
+    assert weather.summarise(calm)["storm"] is None
+    hail = {**calm, "weather_code": [3, 95, 99, 2], "wind_gusts_10m": [20, 55, 70, 15]}
+    s = weather.summarise(hail)["storm"]
+    assert s["kind"] == "hail storm" and s["hail"] == "heavy" and s["severity"] == "severe"
+    assert s["starts"] == t0 + 3600 and s["ends"] == t0 + 3 * 3600 and s["gust_kmh"] == 70
+    wind = {**calm, "wind_gusts_10m": [20, 65, 30, 15]}
+    s = weather.summarise(wind)["storm"]
+    assert s["kind"] == "wind storm" and s["severity"] == "strong" and s["rain_mm"] == 1
+
+
+def test_forecast_endpoint_never_crashes(done, monkeypatch):
+    # The weather service being down must give a calm "ok: false", not an error page.
+    import requests
+    from frugal import geo, weather
+    def down(*a, **k):
+        raise requests.ConnectionError("offline")
+    monkeypatch.setattr(geo, "geocode", lambda address: {"lat": 46.5, "lon": 6.6})
+    monkeypatch.setattr(weather, "forecast", down)
+    r = client.get(f"/api/jobs/{done[0]}/forecast")
+    assert r.status_code == 200 and r.json() == {"ok": False}
+    monkeypatch.setattr(weather, "forecast", lambda lat, lon: {"storm": None, "hours": 48})
+    assert client.get(f"/api/jobs/{done[0]}/forecast").json() == {"ok": True, "storm": None, "hours": 48}

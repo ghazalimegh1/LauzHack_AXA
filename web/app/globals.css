@@ -120,6 +120,25 @@ h3 { font-family: var(--head); font-size: 22px; font-weight: 500; margin: 0 0 4p
 .storm { margin-top: 32px; background: var(--danger-bg); border-left: 8px solid var(--danger); padding: 28px; }
 .storm h2, .storm .eyebrow { color: var(--danger); }
 
+/* storm forecast: a big ticking countdown next to the expected severity */
+.forecast { display: grid; grid-template-columns: 1.3fr 1fr; border: 1px solid var(--line);
+            background: var(--white); margin-top: 16px; }
+.forecast-time { display: grid; gap: 4px; padding: 24px; border-right: 1px solid var(--line); }
+.forecast-label { font-family: var(--mono); font-size: 13px; text-transform: uppercase;
+                  letter-spacing: 0.06em; color: var(--muted); }
+.countdown { font-family: var(--head); font-weight: 500; font-size: 64px; line-height: 1.05;
+             letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--blue); }
+.forecast-detail { padding: 24px; display: grid; gap: 14px; align-content: start; }
+.severity { justify-self: start; color: var(--white); font-family: var(--mono); font-size: 16px;
+            font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 12px; }
+.forecast dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 17px; }
+.forecast dt { font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+               color: var(--muted); padding-top: 3px; }
+.forecast dd { margin: 0; }
+.forecast-calm { border: 1px solid var(--line); padding: 20px 24px; margin: 16px 0 0; font-size: 20px; }
+.storm .forecast { margin: 8px 0 24px; }
+.storm .countdown { color: var(--danger); }
+
 /* ---------- jury page ---------- */
 .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 8px 0 24px;
            border: 1px solid var(--line); }
@@ -171,6 +190,10 @@ th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
   .now-card { grid-template-columns: 96px 1fr; gap: 14px; }
   .now-card img, .no-photo { width: 96px; height: 80px; }
   .two { grid-template-columns: 1fr; }
+  .forecast { grid-template-columns: 1fr; }
+  .forecast-time { border-right: none; border-bottom: 1px solid var(--line); padding: 18px; }
+  .forecast-detail { padding: 18px; }
+  .countdown { font-size: 44px; }
   .two .card + .card { border-left: 1px solid var(--line); border-top: none; }
   .bar-row { grid-template-columns: 1fr; gap: 4px; }
   .result-bar { flex-direction: column; align-items: flex-start; }

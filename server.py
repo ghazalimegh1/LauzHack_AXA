@@ -23,11 +23,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
+import requests
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from frugal import config, detect, objects, report, sitecheck, video
+from frugal import config, detect, geo, objects, report, sitecheck, video, weather
 from frugal.hazards import LEVEL_NAMES
 
 ROOT = Path(__file__).resolve().parent
@@ -258,6 +259,23 @@ def crop_jpg(job_id: str, object_id: int) -> Response:
 @app.get("/api/jobs/{job_id}/strip.png")
 def strip_png(job_id: str) -> Response:
     return Response(_finished(job_id)["strip"], media_type="image/png")
+
+
+@app.get("/api/jobs/{job_id}/forecast")
+def forecast(job_id: str) -> dict:
+    """Next storm at this site (live weather forecast, refreshed every 10 minutes).
+    Never an error page: if the weather service is down, the site says so calmly."""
+    job = _job(job_id)
+    if job["status"] != "ok":
+        raise HTTPException(404, "No result for this check yet.")
+    place = job["result"].get("place")
+    try:
+        if not place:   # simulated hazard levels skip the map, so look the address up now
+            place = geo.geocode(job["result"]["address"])
+        return {"ok": True, **weather.forecast(place["lat"], place["lon"])}
+    except (geo.GeoError, requests.RequestException, KeyError, ValueError) as exc:
+        log.warning("forecast for job %s failed: %s", job_id, exc)
+        return {"ok": False}
 
 
 # ---------------- image helpers ----------------
