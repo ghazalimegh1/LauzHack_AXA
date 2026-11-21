@@ -173,26 +173,27 @@ def _advice(hz: dict, found: list[dict]) -> dict:
 
 
 def _frugal(info: dict, picked: list[dict], kinds: list[str], led: Ledger) -> dict:
-    """Our cost next to a naive design: one full-HD frame per second to the comparison model."""
+    """Our cost next to a naive design: one full-HD frame per second to the top model.
+    Both sides use the same estimate (Claude's 28x28 px token rule), so they are comparable."""
     seconds = max(1, round(info["duration"]))
     naive_tok = seconds * (vision.image_tokens(1568, 882) + PROMPT_TOKENS)
     ours_tok = 0
     if kinds:
         ours_tok = PROMPT_TOKENS + sum(
             vision.image_tokens(*photo._fit(f["safe"], config.CHEAP_IMG_PX).size) for f in picked)
-    # In mock mode there is no real model: estimate with the configured model prices.
+    # In mock mode there is no real model: estimate with Claude Haiku / Sonnet prices.
     price = lambda m, ref: (config.PRICES.get(m) or config.PRICES[ref])[0]  # noqa: E731
     tot = led.totals()
     return {"video_frames": info["total"], "sampled": len(info["frames"]),
             "picked": len(picked), "images_sent": len(picked) if kinds else 0,
             "naive_calls": seconds, "naive_tokens": naive_tok,
-            "naive_usd": naive_tok * price(config.NAIVE_MODEL, "google/gemini-2.5-flash-lite") / 1e6,
+            "naive_usd": naive_tok * price(config.NAIVE_MODEL, "claude-sonnet-5-5") / 1e6,
             "ours_tokens_est": ours_tok,
-            "ours_usd_est": ours_tok * price(config.CHEAP_MODEL, "qwen/qwen3-vl-8b-instruct") / 1e6,
+            "ours_usd_est": ours_tok * price(config.CHEAP_MODEL, "claude-haiku-5-5") / 1e6,
             # Fair baseline: the SAME selected frames, but sent to the big model. It isolates
             # the saving from model choice; the naive one adds the saving from frame picking.
             "baseline_model": config.NAIVE_MODEL,
-            "same_frames_strong_usd": ours_tok * price(config.NAIVE_MODEL, "google/gemini-2.5-flash-lite") / 1e6,
+            "same_frames_strong_usd": ours_tok * price(config.NAIVE_MODEL, "claude-sonnet-5-5") / 1e6,
             "ours_usd_real": tot["usd"], "ours_tokens_real": tot["tokens"]}
 
 

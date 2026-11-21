@@ -50,7 +50,7 @@ npm run build
 cd ..
 ```
 
-Create a local `.env` file with your OpenRouter key:
+Copy `.env.example` to `.env` and put your OpenRouter key after the `=`:
 
 ```text
 OPENROUTER_API_KEY=your_key_here
@@ -116,9 +116,13 @@ the user's video. The system uses a small first pass and escalates only importan
 
 The current OpenRouter setup is:
 
-- `qwen/qwen3-vl-8b-instruct` — primary vision model;
-- `openai/gpt-4o` — selective escalation for important uncertain findings;
-- `google/gemini-2.5-flash-lite` — optional comparison model.
+- `google/gemini-2.5-flash-lite` — first pass, all key frames in one call;
+- `google/gemini-2.5-flash` — only for frames the first pass was unsure about;
+- `google/gemini-2.5-pro` — never called; its price is the "send everything to the top model"
+  comparison on the details page.
+
+Qwen3-VL 8B with GPT-4o was also tried (iPhone night walk, same key frames): it found only what the
+free local detector had already found, for about 6x the cost, so Gemini stays the default.
 
 The website records which steps ran, what evidence was found, and how much processing was used.
 
