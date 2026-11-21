@@ -18,17 +18,19 @@ from PIL import ImageDraw, ImageFont
 from . import config, detect, geo, hazards, objects, photo, score, video, vision
 from .ledger import Ledger
 
-# Risk colours (red/orange/yellow) keep their usual meaning; neutral ones use the axaxl.com palette.
-COLOURS = {"high": "#c62828", "medium": "#e8710a", "low": "#f2a900",
-           "not relevant here": "#999999", "privacy": "#3b3fd8", "uncertain": "#5f5f5f"}
+# One set of importance colours for boxes (drawn here) and tags (app + website), so they match.
+COLOURS = {"high": "#D70015", "medium": "#B25000", "low": "#F9A825",
+           "not relevant here": "#8E8E93", "privacy": "#2997FF", "uncertain": "#636366"}
 PROMPT_TOKENS = 350   # rough size of our instructions, for the estimate only
 
 
 def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
         levels: dict | None = None, k: int | None = None, use_detector: bool = True,
-        video_path: str | None = None) -> dict:
+        video_path: str | None = None, allow_map_fail: bool = False) -> dict:
     """Give either video_bytes or video_path. A path avoids holding a 300 MB phone video
-    in memory twice (the app copies the upload to a temp file first)."""
+    in memory twice (the app copies the upload to a temp file first).
+    allow_map_fail: if the hazard map does not answer, carry on with levels marked
+    'unavailable' instead of stopping (the website shows "map unavailable", never "low")."""
     led = Ledger()
     out = {"kind": "video", "address": address, "status": "ok", "ledger": led,
            "place": None, "answers": {}, "objects": [], "frames": None}
@@ -38,16 +40,19 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
         hz = hazards.from_levels(levels)
         led.add(name="Hazard levels", kind="free", note="simulated values, map skipped")
     else:
+        t0, place = time.perf_counter(), None
         try:
-            t0 = time.perf_counter()
             place = geo.geocode(address)
             hz = hazards.from_map(place["e"], place["n"])
-            led.add(name="Geocode + hazard maps", kind="free", note="geo.admin.ch",
-                    ms=int((time.perf_counter() - t0) * 1000))
-            out["place"] = place
+            note = "geo.admin.ch"
         except geo.GeoError as exc:
-            out.update(status="geo_error", error=str(exc))
-            return out
+            if not allow_map_fail or place is None:
+                out.update(status="geo_error", error=str(exc))   # address itself not found
+                return out
+            hz, note = hazards.unavailable(), "hazard map did not answer: levels unknown"
+        led.add(name="Geocode + hazard maps", kind="free", note=note,
+                ms=int((time.perf_counter() - t0) * 1000))
+        out["place"] = place
     out["hazards"] = hz
 
     # 2: key frames, no AI.
@@ -182,6 +187,10 @@ def _frugal(info: dict, picked: list[dict], kinds: list[str], led: Ledger) -> di
             "naive_usd": naive_tok * price(config.NAIVE_MODEL, "claude-sonnet-5-5") / 1e6,
             "ours_tokens_est": ours_tok,
             "ours_usd_est": ours_tok * price(config.CHEAP_MODEL, "claude-haiku-5-5") / 1e6,
+            # Fair baseline: the SAME selected frames, but sent to the big model. It isolates
+            # the saving from model choice; the naive one adds the saving from frame picking.
+            "baseline_model": config.NAIVE_MODEL,
+            "same_frames_strong_usd": ours_tok * price(config.NAIVE_MODEL, "claude-sonnet-5-5") / 1e6,
             "ours_usd_real": tot["usd"], "ours_tokens_real": tot["tokens"]}
 
 
