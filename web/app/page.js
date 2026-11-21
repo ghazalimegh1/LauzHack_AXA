@@ -2,6 +2,7 @@
 // The customer page: a business owner sees only what to do. No costs, models or tables.
 import { useEffect, useState } from "react";
 import CheckForm from "../components/CheckForm";
+import Forecast, { useForecast } from "../components/Forecast";
 import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag } from "../components/ui";
 import { cropUrl, getInfo, getLatest, runCheck } from "../lib/api";
 import { COLOURS, riskText } from "../lib/format";
@@ -13,6 +14,16 @@ const HEADLINES = {
   "No action needed": "Nothing urgent for this site",
 };
 const MAX_NOW = 5;   // more than five "do now" items would not get done before a storm
+const WARNING_LEAD_S = 90 * 60;   // the simulated storm arrives 90 minutes after the switch
+
+// Example storm for the "Storm warning (simulated)" switch, so the warning view can be shown
+// on a calm day. Made-up values, always labelled "simulated" on screen.
+function simulatedStorm(switchedOn) {
+  const starts = switchedOn + WARNING_LEAD_S;
+  return { ok: true, hours: 48, storm: {
+    kind: "hail storm", starts, ends: starts + 3600, severity: "severe", hail: "heavy",
+    gust_kmh: 80, wind: "gale-force gusts", rain_mm: 20 } };
+}
 
 export default function CustomerPage() {
   const [info, setInfo] = useState(null);
@@ -20,7 +31,7 @@ export default function CustomerPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(true);
-  const [storm, setStorm] = useState(false);
+  const [storm, setStorm] = useState(null);      // when the simulated warning was switched on
 
   useEffect(() => {
     getInfo().then(setInfo).catch(() => setError("The server did not answer. Is it running?"));
@@ -64,7 +75,7 @@ export default function CustomerPage() {
         </>
       ) : (
         <Result check={check} colours={colours} storm={storm} setStorm={setStorm}
-                onNew={() => { setShowForm(true); setStorm(false); }} />
+                onNew={() => { setShowForm(true); setStorm(null); }} />
       )}
 
       <footer className="foot">
@@ -77,11 +88,14 @@ export default function CustomerPage() {
 function Result({ check, colours, storm, setStorm, onNew }) {
   const r = check.result;
   const now = r.result.items.filter((i) => i.now).slice(0, MAX_NOW);
+  const later = r.result.items.filter((i) => i.later);
+  const forecast = useForecast(check.jobId);
   return (
     <div className="fade" key={check.jobId}>
       <div className="result-bar">
         <label className="switch">
-          <input type="checkbox" checked={storm} onChange={(e) => setStorm(e.target.checked)} />
+          <input type="checkbox" checked={storm !== null}
+                 onChange={(e) => setStorm(e.target.checked ? Math.floor(Date.now() / 1000) : null)} />
           <span>Storm warning (simulated)</span>
         </label>
         <button className="link" onClick={onNew}>Check another site</button>
@@ -91,23 +105,28 @@ function Result({ check, colours, storm, setStorm, onNew }) {
         <section className="storm">
           <Eyebrow>Storm warning (simulated)</Eyebrow>
           <h2>Do this now</h2>
-          <NowList items={now} jobId={check.jobId} colours={colours} />
+          <Forecast data={simulatedStorm(storm)} simulated />
+          <ActionList items={now} text="now" jobId={check.jobId} colours={colours} />
         </section>
       ) : (
         <>
           <Headline r={r} />
           <section className="block">
+            <Eyebrow>Storm forecast · next 48 hours</Eyebrow>
+            <h2>Next storm at your site</h2>
+            <Forecast data={forecast} />
+            <p className="caption">Live weather forecast from Open-Meteo, checked every 10 minutes.</p>
+          </section>
+          <section className="block">
             <Eyebrow>Before a storm</Eyebrow>
             <h2>Do this before a storm</h2>
-            <NowList items={now} jobId={check.jobId} colours={colours} />
+            <ActionList items={now} text="now" jobId={check.jobId} colours={colours} />
           </section>
-          {r.result.items.length > 0 && (
+          {later.length > 0 && (
             <section className="block">
               <Eyebrow>This year</Eyebrow>
               <h2>Fix this year</h2>
-              <ul className="later">
-                {r.result.items.map((i) => <li key={i.kind}>{i.later}</li>)}
-              </ul>
+              <ActionList items={later} text="later" jobId={check.jobId} colours={colours} />
             </section>
           )}
           {r.result.uncertain.length > 0 && (
@@ -142,7 +161,9 @@ function Headline({ r }) {
   );
 }
 
-function NowList({ items, jobId, colours }) {
+// One card per thing found: its photo from the video, its name, and what to do.
+// text = "now" (before a storm) or "later" (fix this year).
+function ActionList({ items, text, jobId, colours }) {
   if (!items.length) return <p className="muted">Nothing in your video needs action before a storm.</p>;
   return (
     <ol className="now">
@@ -153,7 +174,7 @@ function NowList({ items, jobId, colours }) {
             : <span className="no-photo" />}
           <div>
             <p className="now-title">{i.name} <Tag label={i.label} colours={colours} /></p>
-            <p>{i.now}</p>
+            <p>{i[text]}</p>
           </div>
         </li>
       ))}

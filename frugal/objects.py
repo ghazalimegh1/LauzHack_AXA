@@ -1,7 +1,9 @@
 """What we look for on a business site, and how much each thing matters.
 
-importance = weight x area hazard level (0-2), so 0..6:
-  weight  3 = typical large claim (vehicles, glass, basement openings, critical equipment low)
+importance = weight x area hazard level (0-2), so 0..8:
+  weight  4 = vehicles: rated high wherever hail is at least medium (team decision,
+              2026-11-21: many cars are hit at once and they can simply be moved)
+          3 = typical large claim (glass, basement openings, critical equipment low)
           2 = moderate claim (solar panels, blinds, outdoor goods, low doors)
   level   comes from the official map for this address
 The same object therefore matters a lot in a hail zone and not at all where hail is rare.
@@ -12,7 +14,7 @@ from __future__ import annotations
 CATALOGUE = {
     # ---------------- hail ----------------
     "vehicle": {
-        "group": "hail", "weight": 3, "name": "vehicle parked outside",
+        "group": "hail", "weight": 4, "name": "vehicle parked outside",
         "find": "car, van, truck or motorbike parked outdoors with no roof over it",
         "why": "Hail dents and breaks parked cars; repairs are costly and many cars are hit at once.",
         "now": "Move vehicles into a garage or under a roof.",
