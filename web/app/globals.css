@@ -200,3 +200,6 @@ th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
   .top { flex-wrap: wrap; gap: 8px; }
   .top-right { gap: 12px; }
 }
+
+/* uploaded video playback (both pages) */
+.player { display: block; width: 100%; max-height: 520px; background: #000; border: 1px solid var(--line); margin-top: 16px; }

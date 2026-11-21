@@ -174,3 +174,12 @@ def test_forecast_endpoint_never_crashes(done, monkeypatch):
     assert r.status_code == 200 and r.json() == {"ok": False}
     monkeypatch.setattr(weather, "forecast", lambda lat, lon: {"storm": None, "hours": 48})
     assert client.get(f"/api/jobs/{done[0]}/forecast").json() == {"ok": True, "storm": None, "hours": 48}
+
+
+def test_uploaded_video_plays_back(done):
+    # Both pages show the uploaded video; seeking needs range requests to work.
+    r = client.get(f"/api/jobs/{done[0]}/video")
+    assert r.status_code == 200 and r.headers["content-type"] == "video/mp4" and len(r.content) > 1000
+    part = client.get(f"/api/jobs/{done[0]}/video", headers={"Range": "bytes=0-99"})
+    assert part.status_code == 206 and len(part.content) == 100
+    assert client.get("/api/jobs/nope/video").status_code == 404

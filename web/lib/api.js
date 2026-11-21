@@ -37,6 +37,7 @@ export async function runCheck(formData) {
 export const frameUrl = (jobId, n) => `/api/jobs/${jobId}/frame/${n}.jpg`;
 export const cropUrl = (jobId, id) => `/api/jobs/${jobId}/crop/${id}.jpg`;
 export const stripUrl = (jobId) => `/api/jobs/${jobId}/strip.png`;
+export const videoUrl = (jobId) => `/api/jobs/${jobId}/video`;
 
 // Next storm at the site, from the live weather forecast: { ok, storm, hours, source }.
 export const getForecast = (jobId) => getJSON(`/api/jobs/${jobId}/forecast`);

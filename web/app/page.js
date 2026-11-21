@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import CheckForm from "../components/CheckForm";
 import Forecast, { useForecast } from "../components/Forecast";
-import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag } from "../components/ui";
+import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../components/ui";
 import { cropUrl, getInfo, getLatest, runCheck } from "../lib/api";
 import { COLOURS, riskText } from "../lib/format";
 
@@ -111,6 +111,11 @@ function Result({ check, colours, storm, setStorm, onNew }) {
       ) : (
         <>
           <Headline r={r} />
+          <section className="block">
+            <Eyebrow>Your video</Eyebrow>
+            <h2>What we looked at</h2>
+            <VideoPlayer jobId={check.jobId} />
+          </section>
           <section className="block">
             <Eyebrow>Storm forecast · next 48 hours</Eyebrow>
             <h2>Next storm at your site</h2>
