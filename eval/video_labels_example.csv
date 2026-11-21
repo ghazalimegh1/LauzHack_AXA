@@ -1,0 +1,7 @@
+frame,object_type,present
+frame_01.jpg,vehicle,y
+frame_01.jpg,glass_roof,n
+frame_01.jpg,basement_opening,n
+frame_02.jpg,vehicle,n
+frame_02.jpg,glass_roof,y
+frame_02.jpg,basement_opening,y

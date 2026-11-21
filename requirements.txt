@@ -1,0 +1,8 @@
+streamlit>=1.50
+pandas
+numpy
+pillow
+requests
+pytest
+opencv-python      # reads video files
+ultralytics        # free local detector (YOLO11n). Optional: the app works without it

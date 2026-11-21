@@ -1,0 +1,35 @@
+[server]
+# Phone videos are big; 1080p for 60 s is about 100-150 MB.
+maxUploadSize = 1024
+
+[theme]
+# Look: the layout style of dream-machines.eu (square corners, thin lines, a tight
+# grotesk headline, small monospace labels) in the colours of axaxl.com
+# (AXA blue #00008F, teal #027180, grey #F5F5F5). Colours only, no AXA logo.
+# Fonts load from Google Fonts; without internet the fallbacks after the comma are used.
+base = "light"
+primaryColor = "#00008F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#212529"
+linkColor = "#00008F"
+borderColor = "#CCCCCC"
+showWidgetBorder = true
+baseRadius = "none"
+buttonRadius = "none"
+# Body: Streamlit's built-in sans-serif IS Source Sans, AXA XL's body font (bundled, works offline).
+# Inter Tight stands in for Dream Machines' paid headline font (Aeonik). Spline Sans Mono is
+# Dream Machines' own (free) mono font. No ", fallback" after a URL: Streamlit glues it onto the URL.
+font = "sans-serif"
+headingFont = "Inter Tight:https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600&display=swap"
+codeFont = "Spline Sans Mono:https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500&display=swap"
+headingFontWeights = [500, 500, 500, 500, 500, 500]
+blueColor = "#00008F"
+greenColor = "#027180"
+greenBackgroundColor = "#EBF8FA"
+
+[theme.sidebar]
+backgroundColor = "#F5F5F5"
+
+[browser]
+gatherUsageStats = false
