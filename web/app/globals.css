@@ -192,36 +192,6 @@ p { margin: 0; }
 /* ---------- video ---------- */
 .player { width: 100%; max-height: 72vh; background: #000; }
 
-/* ---------- spatial view ---------- */
-.spatial { display: grid; gap: clamp(20px, 3vw, 36px); grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); align-items: start; }
-.scene { background: var(--white); border: 1px solid var(--line); position: relative; }
-.scene svg { width: 100%; height: auto; }
-.pin { cursor: pointer; outline: none; }
-.pin .dot { transition: transform 0.2s var(--ease); transform-box: fill-box; transform-origin: center; }
-.pin:hover .dot, .pin.selected .dot { transform: scale(1.15); }
-.pin .ring { opacity: 0; }
-.pin.selected .ring, .pin:focus-visible .ring { opacity: 1; }
-/* would run into the next pin; the panel and pin row name it instead */
-.pin-label.crowded { display: none !important; }
-.pin-label { font: 600 14px var(--text); fill: var(--ink); paint-order: stroke; stroke: var(--white); stroke-width: 4px; stroke-linejoin: round; }
-.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
-.legend span { display: inline-flex; align-items: center; gap: 7px; }
-.legend i { width: 11px; height: 11px; display: inline-block; border-radius: 50%; }
-.legend i.sq { border-radius: 0; }
-.pinrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.pinbtn {
-  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 7px; cursor: pointer;
-  background: var(--white); border: 1.5px solid var(--line); font-size: 0.95rem;
-}
-.pinbtn[aria-pressed="true"] { border-color: var(--blue); background: #ededf8; }
-.pinbtn b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--white); font: 700 0.8rem/1 var(--head); }
-.panel { background: var(--white); border: 1px solid var(--line); align-self: start; }
-.panel .body { padding: 20px 22px 24px; display: grid; gap: 14px; }
-.panel dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 0.97rem; }
-.panel dt { font: 500 0.72rem/1.9 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-.panel dd { margin: 0; }
-.panel .todo { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
-.disclaimer { margin-top: 14px; font-size: 0.92rem; color: var(--muted); max-width: 70ch; }
 
 /* ---------- footer ---------- */
 .footer { background: var(--ink); color: rgba(255, 255, 255, 0.8); padding: 36px 0; }
@@ -297,21 +267,17 @@ tfoot td { font-weight: 700; background: var(--paper); }
 
 /* ---------- phone ---------- */
 @media (max-width: 860px) {
-  .spatial { grid-template-columns: minmax(0, 1fr); }
   .storm { grid-template-columns: minmax(0, 1fr); }
   .map { grid-template-columns: minmax(0, 1fr); }
   .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
   body { font-size: 16px; }
-  .pin .pin-label { display: none; }
-  .pin.selected .pin-label { display: inline; }
   .drop.has-file { grid-template-columns: minmax(0, 1fr); }
   .drop video { width: 100%; height: 140px; }
   .button { width: 100%; }
   .actions .button { width: auto; flex: 1 1 auto; }
   .lightbox .button { width: auto; }
-  .pin-label { font-size: 22px; }
   .running { align-items: flex-start; }
   .pixels { width: 132px; top: auto; bottom: 20px; transform: none; opacity: 0.28; }
 }

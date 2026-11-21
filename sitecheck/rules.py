@@ -47,7 +47,7 @@ def weak_points(findings: list, levels: dict) -> list:
         item = catalogue.KINDS[kind]
         out.append({
             "kind": kind, "name": item["name"], "hazard": item["hazard"],
-            "level": int(levels.get(item["hazard"], 0)), "layer": item["layer"],
+            "level": int(levels.get(item["hazard"], 0)),
             "score": best["score"], "label": best["label"],
             "status": "counted" if sure else "uncertain",
             "count": len(sure) if sure else len(items),

@@ -43,8 +43,7 @@ Tests (no internet, no AI cost):
 ## The two pages
 
 - **`/` Customer app.** Address + video, then "Check my site". The result shows the action
-  in plain words, the hail and water risk at the address, a 2.5D spatial view with one pin
-  per weak point, "Do this before a storm" cards, a live countdown to the next storm, "Fix
+  in plain words, the hail and water risk at the address, "Do this before a storm" cards, a live countdown to the next storm, "Fix
   this year" cards and the video. No costs, models or tables.
 - **`/demo.html` Assessment details** (for the jury). The same check, opened up: key frames
   with boxes, the filmstrip of every sampled frame and why it was picked or skipped, cost
@@ -100,7 +99,5 @@ Gemini 2.5 Pro $0.0061 (about 4×), a naive 1 HD frame per second on Gemini 2.5 
 
 ## Limits
 
-- The spatial view places pins approximately (layer from the object type, left-to-right
-  from when it was seen). It summarises the video; it is not a survey.
 - Weights and the hail cut-offs (3 cm = level 1, 4 cm = level 2) are our team's assumptions.
 - Jobs live in memory: restarting the server forgets them, and at most 5 are kept.

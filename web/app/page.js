@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import CheckForm, { Running } from "../components/CheckForm";
 import { HazardChips, LaterList, NowList, counted } from "../components/Result";
 import { Footer, Hero } from "../components/Shell";
-import SpatialView from "../components/SpatialView";
 import Storm from "../components/Storm";
 import { follow, getLatest, img, startCheck } from "../lib/api";
 
@@ -50,17 +49,10 @@ function Result({ job, onAgain }) {
         </div>
       </section>
 
-      <section className="band" aria-labelledby="where-title">
-        <div className="inner">
-          {todo.length > 0 && r.action.key !== "unknown" ? (
-            <>
-              <div className="section-head">
-                <h2 id="where-title">Where your site is exposed</h2>
-                <p>Each pin is a weak point we saw in your video. Select one to see what to do.</p>
-              </div>
-              <SpatialView result={r} jobId={job.id} />
-            </>
-          ) : (
+      {/* Only when there is nothing to protect: say why, instead of an empty page. */}
+      {(todo.length === 0 || r.action.key === "unknown") && (
+        <section className="band" aria-labelledby="where-title">
+          <div className="inner">
             <div className="section-head">
               <h2 id="where-title">
                 {r.action.key === "unknown" ? "We could not judge the risk this time" : "Nothing at risk in your video"}
@@ -71,12 +63,12 @@ function Result({ job, onAgain }) {
                   : "We did not see anything in your video that the hail or water risk at this address would damage."}
               </p>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {todo.length > 0 && (
-        <section className="band paper" aria-labelledby="now-title">
+        <section className="band" aria-labelledby="now-title">
           <div className="inner">
             <div className="section-head">
               <h2 id="now-title">Do this before a storm</h2>
@@ -90,7 +82,7 @@ function Result({ job, onAgain }) {
       <Storm jobId={job.id} />
 
       {todo.length > 0 && (
-        <section className="band" aria-labelledby="year-title">
+        <section className="band paper" aria-labelledby="year-title">
           <div className="inner">
             <div className="section-head">
               <h2 id="year-title">Fix this year</h2>
