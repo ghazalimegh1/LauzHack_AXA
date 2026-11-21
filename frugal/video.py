@@ -4,10 +4,13 @@ A 60 s phone video has ~1,800 frames. Neighbouring frames are nearly identical,
 many are blurred by walking, so paying a model to look at all of them is waste.
 Steps, each cheaper than any model call:
   1 decode once, keep 2 frames per second (by real timestamp, so variable frame rate works)
-  2 drop dark, overexposed and motion-blurred     (brightness + edge sharpness)
-  3 split the walk into equal parts, take the sharpest frame of each part
-    unless it shows the same view as a frame already picked
-  4 the picked frames come from a compact copy kept during step 1 (no second decode)
+  2 drop dark, overexposed and motion-blurred     (brightness + edge sharpness,
+    both judged against this video, so a night walk is not thrown away as "dark")
+  3 optional: the free local detector looks at every sampled thumbnail
+  4 split the walk into equal parts, take the best frame of each part (sharp, and
+    showing a vehicle if the detector saw one) unless it repeats a view already picked
+  5 the picked frames come from a compact copy kept during step 1 (no second decode);
+    dim ones are brightened before anyone (detector, AI, customer) looks at them
 Every sampled frame keeps a reason, so the demo can show what was picked and why.
 
 Phone videos (measured on an Apple M2, iPhone clip: HEVC, 3840x2160, 60 fps, 47 s, 302 MB):
@@ -36,6 +39,13 @@ KEEP_PX = 1280      # picked frames: detail for the detector and the screen
 KEEP_JPEG_Q = 90    # sampled frames are kept as JPEG: ~150 KB instead of 2.7 MB raw
 DUP_DIFF = 10       # mean pixel difference (0-255) below which two views count as the same
 FALLBACK_FPS = 30.0
+# Night video (iPhone, 24 s, 2026-11-21): brightness median 45, so the old fixed limit of
+# 40 dropped 17 of 49 frames, among them the two clearest views of parked cars. Now a
+# frame is "dark" only if it is much darker than this video's own typical frame.
+DARK_ABS, DARK_REL = 40, 0.45   # dark = below 40, or below 45% of the median if that is lower
+DARK_MIN = 12                   # ...but always dark below this: nothing to see at all
+BLUR_MIN = 0.5                  # edge strength (0-255 per pixel) below which a frame is blurry
+SEEN_BONUS = 1.0                # a frame showing a vehicle beats one up to 2x sharper
 
 
 # ---------------- decoding ----------------
@@ -123,29 +133,44 @@ def _signature(img: Image.Image) -> np.ndarray:
     return np.asarray(img.convert("L").resize((32, 18)), dtype=np.float32)
 
 
-def _choose(frames: list[dict], k: int) -> None:
-    """Marks frames in place: picked (with number n) or a reason why not."""
+def _choose(frames: list[dict], k: int, spot=None) -> None:
+    """Marks frames in place: picked (with number n) or a reason why not.
+    spot: optional free detector, thumbnail -> confidence (0-1) that a vehicle is visible."""
     for f in frames:
-        f["mean"], f["sharp"] = photo.measure(f["thumb"])
+        f["mean"] = photo.measure(f["thumb"])[0]
+        f["sharp"] = photo.walk_sharpness(f["thumb"])
         f["sig"] = _signature(f["thumb"])
-        f["picked"], f["n"], f["reason"] = False, None, ""
+        f["picked"], f["n"], f["reason"], f["seen"] = False, None, "", 0.0
     if not frames:
         return
-    # Blur is judged relative to this video: a dim hall is never as crisp as a sunny yard.
-    blur_limit = max(30.0, 0.4 * float(np.median([f["sharp"] for f in frames])))
+    # Light and blur are judged relative to this video: a night walk or a dim hall is
+    # never as bright or crisp as a sunny yard, but its best frames are still useful.
+    median_sharp = float(np.median([f["sharp"] for f in frames]))
+    blur_limit = max(BLUR_MIN, 0.5 * median_sharp)
+    dark_limit = max(DARK_MIN, min(DARK_ABS, DARK_REL * float(np.median([f["mean"] for f in frames]))))
     for f in frames:
-        if f["mean"] < 40:
+        if f["mean"] < dark_limit:
             f["reason"] = "dark"
         elif f["mean"] > 235:
             f["reason"] = "overexposed"
         elif f["sharp"] < blur_limit:
             f["reason"] = "blurry"
 
+    if spot:
+        for f in frames:
+            if not f["reason"]:
+                f["seen"] = spot(f["thumb"])
+
+    # Quality: sharpness against this video's typical frame (capped, because street lights
+    # and noise make some night frames look "sharp" without showing more), plus a bonus
+    # when the detector saw a vehicle, the most common hail claim we can spot for free.
+    def quality(f):
+        return min(2.0, f["sharp"] / max(median_sharp, 1e-6)) + SEEN_BONUS * f["seen"]
+
     picked: list[dict] = []
     bounds = np.linspace(0, len(frames), k + 1).astype(int)
     for a, b in zip(bounds[:-1], bounds[1:]):
-        part = sorted((f for f in frames[a:b] if not f["reason"]),
-                      key=lambda f: f["sharp"], reverse=True)
+        part = sorted((f for f in frames[a:b] if not f["reason"]), key=quality, reverse=True)
         for f in part:
             same = next((p for p in picked
                          if np.abs(f["sig"] - p["sig"]).mean() < DUP_DIFF), None)
@@ -162,24 +187,25 @@ def _choose(frames: list[dict], k: int) -> None:
 
 
 def _unpack(frames: list[dict]) -> None:
-    """Picked frames get their full-size image back; the rest drop their copy to free memory."""
+    """Picked frames get their full-size image back (dim ones brightened); the rest drop
+    their copy to free memory."""
     for f in frames:
         data = f.pop("_jpeg", None)
         if f["picked"] and data:
-            f["img"] = Image.open(io.BytesIO(data)).convert("RGB")
+            f["img"] = photo.brighten(Image.open(io.BytesIO(data)).convert("RGB"), f["mean"])
 
 
 # ---------------- public ----------------
-def keyframes_from_path(path: str, k: int | None = None) -> dict:
+def keyframes_from_path(path: str, k: int | None = None, spot=None) -> dict:
     """Returns all sampled frames (with picked / reason) and the picked ones."""
     info = _sample(path)
-    _choose(info["frames"], k or config.KEYFRAMES)
+    _choose(info["frames"], k or config.KEYFRAMES, spot)
     _unpack(info["frames"])
     info["picked"] = sorted((f for f in info["frames"] if f["picked"]), key=lambda f: f["n"])
     return info
 
 
-def keyframes(video_bytes: bytes, k: int | None = None, suffix: str = ".mp4") -> dict:
+def keyframes(video_bytes: bytes, k: int | None = None, suffix: str = ".mp4", spot=None) -> dict:
     # OpenCV reads from a file path, not from memory. iPhones name files IMG_1234.MOV:
     # normalise the suffix ("MOV", ".MOV", "" -> ".mov" / ".mp4") so the container is recognised.
     suffix = "." + (suffix or ".mp4").lstrip(".").lower()
@@ -187,7 +213,7 @@ def keyframes(video_bytes: bytes, k: int | None = None, suffix: str = ".mp4") ->
         tmp.write(video_bytes)
         path = tmp.name
     try:
-        return keyframes_from_path(path, k)
+        return keyframes_from_path(path, k, spot)
     finally:
         os.unlink(path)
 
@@ -214,7 +240,8 @@ def filmstrip(frames: list[dict], cols: int = 12, w: int = 128) -> Image.Image:
         sep = "\n" if portrait else " "
         if f["picked"]:
             draw.rectangle([x - 3, y - 3, x + w + 2, y + h + 2], outline="#1b9e4b", width=4)
-            label, colour = f"#{f['n']}{sep}{f['t']:.1f}s", "#1b9e4b"
+            car = " car" if f.get("seen", 0) >= 0.5 else ""   # the detector saw a vehicle here
+            label, colour = f"#{f['n']}{car}{sep}{f['t']:.1f}s", "#1b9e4b"
         else:
             label, colour = f"{f['t']:.1f}s{sep}{f['reason']}", "#888888"
         draw.text((x, y + h + 5), label, fill=colour, font=font)

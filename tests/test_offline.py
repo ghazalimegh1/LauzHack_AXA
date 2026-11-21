@@ -217,3 +217,32 @@ def test_site_check_reads_from_a_path(tmp_path):
                         use_detector=False)
     assert res["status"] == "ok" and res["frames"]["picked"]
     assert res["ledger"].totals()["ai_calls"] == 0
+
+
+def test_night_frames_are_brightened_and_smear_is_caught():
+    from frugal import photo
+    rng = np.random.default_rng(2)
+    tex = rng.integers(0, 255, (240, 320)).astype(np.uint8)
+    dark = Image.fromarray((tex * 0.15).astype(np.uint8)).convert("RGB")
+    mean = photo.measure(dark)[0]
+    assert photo.measure(photo.brighten(dark, mean))[0] > 2 * mean        # lifted
+    bright = Image.fromarray(tex).convert("RGB")
+    assert photo.brighten(bright, photo.measure(bright)[0]) is bright      # left alone
+    # Walking smear: averaging along one direction kills that direction's edges.
+    import cv2
+    smeared = Image.fromarray(cv2.blur(tex, (25, 1))).convert("RGB")
+    assert photo.walk_sharpness(smeared) < 0.3 * photo.walk_sharpness(bright)
+
+
+def test_keyframes_prefer_frames_with_vehicles():
+    # Four equally good views in one part; the detector saw a vehicle only in the third.
+    from frugal import video
+    rng = np.random.default_rng(3)
+    tex = rng.integers(40, 220, (270, 2000, 3), dtype=np.uint8)
+    frames = [{"t": i * 0.5, "thumb": Image.fromarray(tex[:, i * 400:i * 400 + 480])}
+              for i in range(4)]
+    car = frames[2]["thumb"]
+    video._choose(frames, 1, spot=lambda thumb: 0.9 if thumb is car else 0.0)
+    assert [f["t"] for f in frames if f["picked"]] == [1.0]
+    video._choose(frames, 1)                       # without the detector: sharpness decides
+    assert sum(f["picked"] for f in frames) == 1

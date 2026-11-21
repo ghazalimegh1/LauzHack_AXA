@@ -55,25 +55,28 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
         out["place"] = place
     out["hazards"] = hz
 
-    # 2: key frames, no AI.
+    # 2: key frames, no AI. The free detector helps pick frames that show vehicles.
+    ran_detector = use_detector and detect.available()
+    spot = detect.vehicle_seen if ran_detector else None
     t0 = time.perf_counter()
     try:
-        info = (video.keyframes_from_path(video_path, k) if video_path
-                else video.keyframes(video_bytes, k, suffix))
+        info = (video.keyframes_from_path(video_path, k, spot) if video_path
+                else video.keyframes(video_bytes, k, suffix, spot))
     except ValueError as exc:
         out.update(status="video_error", error=str(exc))
         return out
     out["frames"] = info
     picked = info["picked"]
+    seen = sum(f.get("seen", 0) >= detect.SURE for f in info["frames"])
     led.add(name="Pick key frames", kind="free", ms=int((time.perf_counter() - t0) * 1000),
-            note=f"{info['total']} frames -> {len(info['frames'])} sampled -> {len(picked)} picked")
+            note=f"{info['total']} frames -> {len(info['frames'])} sampled -> {len(picked)} picked"
+                 + (f", vehicles seen in {seen}" if spot else ""))
     if not picked:
         out.update(status="video_error", error="No usable frame: the video is too dark or blurry.")
         return out
 
     # 3: free local detector; people are blurred before anything is uploaded.
     found: list[dict] = []
-    ran_detector = use_detector and detect.available()
     if ran_detector:
         t0 = time.perf_counter()
         for f in picked:
