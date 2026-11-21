@@ -6,3 +6,8 @@ requests
 pytest
 opencv-python      # reads video files
 ultralytics        # free local detector (YOLO11n). Optional: the app works without it
+# website backend (server.py)
+fastapi
+uvicorn
+python-multipart   # lets FastAPI read uploaded video files
+httpx              # only for the API tests (FastAPI's test client)

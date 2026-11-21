@@ -117,7 +117,17 @@ def _level_for(layer: dict, attrs: dict) -> int:
 
 
 def empty() -> dict:
-    return {g: {"level": 0, "sources": [], "raw": [], "answered": False} for g in GROUPS}
+    # answered = a mapped zone lies on this point; available = the map service answered at all.
+    return {g: {"level": 0, "sources": [], "raw": [], "answered": False, "available": True}
+            for g in GROUPS}
+
+
+def unavailable() -> dict:
+    """The map did not answer: level 0 here means 'unknown', and the UI must say so."""
+    out = empty()
+    for g in out.values():
+        g.update(available=False, sources=["hazard map did not answer"])
+    return out
 
 
 def from_map(e: float, n: float) -> dict:
