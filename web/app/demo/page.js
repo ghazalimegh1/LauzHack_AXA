@@ -3,7 +3,7 @@
 // Every number and box here comes from the real run (via the API); nothing is hard-coded.
 import { useEffect, useState } from "react";
 import CheckForm from "../../components/CheckForm";
-import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag } from "../../components/ui";
+import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../../components/ui";
 import { frameUrl, getInfo, getLatest, runCheck, stripUrl } from "../../lib/api";
 import { COLOURS, GROUP_NAMES, riskText, times, usd } from "../../lib/format";
 
@@ -111,6 +111,12 @@ function Results({ check, colours }) {
     <div className="fade" key={check.jobId}>
       {r.mock && <p className="note">Demo mode: AI answers are simulated, so boxes and costs are not real.</p>}
       {r.warning && <p className="error">{r.warning}</p>}
+      <section className="block">
+        <Eyebrow>Step 0 · the upload</Eyebrow>
+        <h2>The uploaded video</h2>
+        <p className="lead">Shown for reference only. No AI sees this video; it only sees the key frames below.</p>
+        <VideoPlayer jobId={check.jobId} />
+      </section>
       <Frames check={check} />
       <Found check={check} colours={colours} />
       <MapDecision r={r} />

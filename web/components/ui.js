@@ -1,4 +1,7 @@
 // Tiny building blocks used on both pages.
+"use client";
+import { useState } from "react";
+import { videoUrl } from "../lib/api";
 import { COLOURS } from "../lib/format";
 
 // Importance tag (HIGH / MEDIUM ...): the only place besides the boxes with risk colours.
@@ -58,5 +61,20 @@ export function Hero({ eyebrow, title, children }) {
       <h1>{title}</h1>
       {children}
     </section>
+  );
+}
+
+// The video that was uploaded, played back from our own server (just for show: the check
+// itself only used the key frames). Phone videos (H.264/HEVC) play; old formats such as
+// MPEG-4 Part 2 (what OpenCV writes by default) do not, so then a calm note replaces the
+// player instead of a broken box.
+export function VideoPlayer({ jobId }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return <p className="muted">This browser cannot play this video&apos;s format. Videos straight from a phone play here.</p>;
+  }
+  return (
+    <video className="player" key={jobId} src={videoUrl(jobId)} controls muted playsInline
+           preload="metadata" onError={() => setBroken(true)} />
   );
 }

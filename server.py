@@ -35,6 +35,9 @@ ROOT = Path(__file__).resolve().parent
 WEB_OUT = ROOT / "web" / "out"
 MAX_JOBS = 5          # results kept in memory; older ones are dropped
 CROP_PAD = 0.15       # crops show a little context around each object
+# Phones save MP4 and MOV; both use the same container, and Chrome only plays a .mov file
+# when it is announced as video/mp4, so both are sent with that type.
+VIDEO_TYPE = "video/mp4"
 log = logging.getLogger("site-check")
 
 app = FastAPI(title="Frugal Site Check")
@@ -151,12 +154,14 @@ def _run_job(job_id: str, address: str, path: str, k: int, use_detector: bool,
             log.warning("job %s: %s", job_id, res.get("error"))
             job.update(status="error", error=_friendly_error(res))
         else:
-            job.update(status="ok", result=to_json(res), images=_images_for(res))
+            # The video file is kept (on this computer only) so both pages can play it back.
+            job.update(status="ok", result=to_json(res), images=_images_for(res), video=path)
     except Exception:  # noqa: BLE001 - a demo must show a message, never a crash
         log.exception("job %s failed", job_id)
         job.update(status="error", error="Something went wrong. Please try again.")
     finally:
-        os.unlink(path)
+        if job.get("video") != path:
+            os.unlink(path)
 
 
 def _remember(job_id: str) -> None:
@@ -165,7 +170,13 @@ def _remember(job_id: str) -> None:
         # Drop the oldest finished results; a check that is still running is never dropped.
         finished = [j for j, job in _jobs.items() if job["status"] != "running"]
         for old in finished[:max(0, len(_jobs) - MAX_JOBS)]:
-            del _jobs[old]
+            _forget(_jobs.pop(old))
+
+
+def _forget(job: dict) -> None:
+    # A dropped result takes its kept video with it, so old uploads do not fill the disk.
+    if job.get("video") and os.path.exists(job["video"]):
+        os.unlink(job["video"])
 
 
 def _job(job_id: str) -> dict:
@@ -259,6 +270,16 @@ def crop_jpg(job_id: str, object_id: int) -> Response:
 @app.get("/api/jobs/{job_id}/strip.png")
 def strip_png(job_id: str) -> Response:
     return Response(_finished(job_id)["strip"], media_type="image/png")
+
+
+@app.get("/api/jobs/{job_id}/video")
+def video_file(job_id: str) -> FileResponse:
+    """The uploaded video, for playback on both pages (just for show; no AI involved).
+    FileResponse answers range requests, so the player can jump to any second."""
+    job = _job(job_id)
+    if not job.get("video"):
+        raise HTTPException(404, "No video for this check.")
+    return FileResponse(job["video"], media_type=VIDEO_TYPE)
 
 
 @app.get("/api/jobs/{job_id}/forecast")
