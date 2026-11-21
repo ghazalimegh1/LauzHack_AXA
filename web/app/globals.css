@@ -147,4 +147,6 @@ th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
   .two { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 1fr; gap: 4px; }
   .result-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .top { flex-wrap: wrap; gap: 8px; }          /* badge drops below the name on narrow phones */
+  .top-right { gap: 12px; }
 }
