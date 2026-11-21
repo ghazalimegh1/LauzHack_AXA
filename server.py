@@ -322,10 +322,27 @@ def _png(img) -> bytes:
 
 
 # ---------------- the website (built Next.js files) ----------------
+@app.middleware("http")
+async def fresh_pages(request, call_next):
+    """Pages are re-checked on every visit; only the code files under /_next/static (whose names
+    change with every build) may be cached. Without this, a browser kept an old copy of
+    demo.html after a rebuild, asked for code files that no longer existed, and showed
+    "Application error: a client-side exception has occurred"."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/_next/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 if WEB_OUT.exists():
     @app.get("/demo")
     def demo_page() -> FileResponse:
         return FileResponse(WEB_OUT / "demo.html")   # same page with or without ".html"
+
+    @app.get("/favicon.ico")
+    def favicon() -> FileResponse:
+        # Browsers still ask for this old name; answer with the tab icon (the AXA logo).
+        return FileResponse(WEB_OUT / "icon.png", media_type="image/png")
 
     # Mounted last, so the /api routes above always win.
     app.mount("/", StaticFiles(directory=WEB_OUT, html=True), name="web")

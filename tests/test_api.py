@@ -183,3 +183,8 @@ def test_uploaded_video_plays_back(done):
     part = client.get(f"/api/jobs/{done[0]}/video", headers={"Range": "bytes=0-99"})
     assert part.status_code == 206 and len(part.content) == 100
     assert client.get("/api/jobs/nope/video").status_code == 404
+
+
+def test_pages_are_never_served_stale():
+    # After a rebuild an old cached page asks for code files that no longer exist.
+    assert client.get("/api/info").headers["cache-control"] == "no-cache"
