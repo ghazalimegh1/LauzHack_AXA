@@ -111,7 +111,7 @@ def test_bad_video_gives_a_friendly_error():
 
 def test_info_says_mock_and_shares_colours():
     info = client.get("/api/info").json()
-    assert info["mock"] is True and info["colours"]["high"] == "#D70015"
+    assert info["mock"] is True and info["colours"]["high"] == "#C62828"
 
 
 # ---------------- core changes behind the website ----------------

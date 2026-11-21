@@ -3,7 +3,7 @@
 // Every number and box here comes from the real run (via the API); nothing is hard-coded.
 import { useEffect, useState } from "react";
 import CheckForm from "../../components/CheckForm";
-import { Chip, DemoBadge, Spinner, Tag } from "../../components/ui";
+import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag } from "../../components/ui";
 import { frameUrl, getInfo, getLatest, runCheck, stripUrl } from "../../lib/api";
 import { COLOURS, GROUP_NAMES, riskText, times, usd } from "../../lib/format";
 
@@ -44,23 +44,22 @@ export default function DemoPage() {
 
   const colours = (info && info.colours) || COLOURS;
   return (
-    <main className="page dark">
+    <main className="page">
       <header className="top">
         <span className="brand">Site Check <span className="muted">· technical view</span></span>
         <span className="top-right"><DemoBadge info={info} /><a href="/">Customer view</a><b className="axa">AXA</b></span>
       </header>
 
-      <section className="intro">
-        <h1>How the check works</h1>
+      <Hero eyebrow="Technical view · for the jury" title="How the check works">
         {info && (
-          <p className="muted small">
+          <p>
             Provider: {info.provider} · cheap model: {info.cheap_model} · strong model: {info.strong_model}
           </p>
         )}
-      </section>
+      </Hero>
 
-      <section className="card">
-        <CheckForm onSubmit={onSubmit} busy={busy} buttonText="Analyse site">
+      <section className="form-card">
+        <CheckForm onSubmit={onSubmit} busy={busy} buttonText="→  Analyse site">
           <Settings settings={settings} setSettings={setSettings} info={info} />
         </CheckForm>
         {busy && <Spinner>Picking frames, detecting objects, checking the maps...</Spinner>}
@@ -130,7 +129,8 @@ function Frames({ check }) {
   ];
   return (
     <section className="block">
-      <h2>1. Frames</h2>
+      <Eyebrow>Step 1 · free code</Eyebrow>
+      <h2>Frames</h2>
       <p className="lead">Free code drops dark, blurry and repeated views before any AI sees the video.</p>
       <div className="numbers">
         {numbers.map(([n, label]) => (
@@ -157,7 +157,8 @@ function Found({ check, colours }) {
   }, []);
   return (
     <section className="block">
-      <h2>2. What the camera found</h2>
+      <Eyebrow>Step 2 · free detector + AI</Eyebrow>
+      <h2>What the camera found</h2>
       <p className="lead">Boxes come from the free detector and the AI models. People are blurred before upload.</p>
       <div className="frames">
         {r.frames.map((f) => (
@@ -198,7 +199,8 @@ function Found({ check, colours }) {
 function MapDecision({ r }) {
   return (
     <section className="block">
-      <h2>3. How the map decided</h2>
+      <Eyebrow>Step 3 · official hazard maps</Eyebrow>
+      <h2>How the map decided</h2>
       <p className="lead">Only object types that matter at this address are sent to the paid model.</p>
       <div className="two">
         {["hail", "water"].map((g) => {
@@ -235,7 +237,8 @@ function Cost({ r }) {
   const max = Math.max(...bars.map((b) => b[1]), 1e-12);
   return (
     <section className="block">
-      <h2>4. Cost</h2>
+      <Eyebrow>Step 4 · frugality</Eyebrow>
+      <h2>Cost</h2>
       <p className="lead">The same frames could go to the big model; we only send what is needed.</p>
       <div className="numbers">
         <div><b>{usd(r.totals.usd)}</b><span>this check, {measured}</span></div>
@@ -274,7 +277,8 @@ function Cost({ r }) {
 function Limits() {
   return (
     <section className="block">
-      <h2>5. Honest limits</h2>
+      <Eyebrow>Limits</Eyebrow>
+      <h2>Honest limits</h2>
       <ul className="limits">
         <li>It only judges what the camera sees: not roof strength, not what is behind walls.</li>
         <li>Not seen does not mean safe: a missing box is not a clean bill of health.</li>
