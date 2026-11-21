@@ -51,6 +51,13 @@ def detect(img: Image.Image) -> list[dict]:
     return out
 
 
+def vehicle_seen(thumb: Image.Image) -> float:
+    """How sure the detector is that this small frame shows a vehicle (0 = none).
+    Used to pick key frames: ~30 ms per thumbnail, so even 120 sampled frames cost a few
+    seconds and no money."""
+    return max((o["conf"] for o in detect(thumb) if o["kind"] == "vehicle"), default=0.0)
+
+
 def blur_people(img: Image.Image, objects: list[dict]) -> Image.Image:
     img = img.copy()
     w, h = img.size
