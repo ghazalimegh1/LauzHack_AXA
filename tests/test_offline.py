@@ -163,11 +163,11 @@ def test_parse_find_salvages_cut_off_reply():
 
 def test_box_order_and_reasoning_per_model():
     from frugal import config
-    assert config.CHEAP_MODEL == "qwen/qwen3-vl-8b-instruct"
-    assert config.STRONG_MODEL == "openai/gpt-4o"
-    assert config.NAIVE_MODEL == "google/gemini-2.5-flash-lite"
-    assert config.box_order(config.CHEAP_MODEL) == "xy"
-    assert config.box_order(config.STRONG_MODEL) == "xy"
+    # Defaults are checked directly, so the test does not depend on which key is in .env.
+    assert config._DEFAULTS["openrouter"] == ("google/gemini-2.5-flash-lite", "google/gemini-2.5-flash")
+    # The comparison model must cost more than our cheap model, or the cost bars mean nothing.
+    assert config.PRICES["google/gemini-2.5-pro"][0] > config.PRICES["google/gemini-2.5-flash-lite"][0]
+    assert config.box_order("qwen/qwen3-vl-8b-instruct") == "xy"
     assert config.box_order("google/gemini-2.5-flash-lite") == "yx"
     assert config.box_order("anthropic/claude-haiku-5.5") == "xy"
     assert config.reasoning("google/gemini-2.5-pro") == {"max_tokens": 128}

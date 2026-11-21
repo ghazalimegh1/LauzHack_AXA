@@ -23,7 +23,7 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(ROOT / ".env")
 
-# Two ways to reach a vision service. An Anthropic key wins if both are set.
+# Two ways to reach a model. A Claude key wins if both are set.
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 PROVIDER = os.environ.get("PROVIDER") or (
@@ -35,20 +35,24 @@ MOCK = PROVIDER == "mock" or not API_KEY or os.environ.get("FRUGAL_MOCK") == "1"
 # Cheap model answers first; the strong one only sees what the cheap one could not decide.
 _DEFAULTS = {
     "anthropic": ("claude-haiku-5-5", "claude-sonnet-5-5"),
-    # Qwen handles the first pass; GPT-4o is reserved for important uncertain findings.
-    "openrouter": ("qwen/qwen3-vl-8b-instruct", "openai/gpt-4o"),
+    # Strong = 2.5 Flash, not Pro: on our box test (2 site photos, 2026-11-21) Flash drew the
+    # same boxes as Pro (skylight, glass band, 5 trucks) for USD 0.00083 instead of 0.00466.
+    # Qwen3-VL 8B + GPT-4o were tried on 2026-11-21 (iPhone night walk, same 6 key frames):
+    # they found only what the free detector had found, for USD 0.0076 instead of 0.0013.
+    "openrouter": ("google/gemini-2.5-flash-lite", "google/gemini-2.5-flash"),
     "mock": ("mock-cheap", "mock-strong"),
 }
 CHEAP_MODEL = os.environ.get("CHEAP_MODEL") or _DEFAULTS.get(PROVIDER, _DEFAULTS["mock"])[0]
 STRONG_MODEL = os.environ.get("STRONG_MODEL") or _DEFAULTS.get(PROVIDER, _DEFAULTS["mock"])[1]
 # The "send everything to a top model" design we compare against. Kept separate from
-# STRONG_MODEL so a cheaper comparison model does not make the escalation path look cheap too.
+# STRONG_MODEL so a cheaper escalation model does not make the naive design look cheap too.
+# It must be the top model of the family: comparing against a cheaper one would be meaningless.
 NAIVE_MODEL = os.environ.get("NAIVE_MODEL") or (
-    "google/gemini-2.5-flash-lite" if PROVIDER == "openrouter" else "claude-sonnet-5-5")
+    "google/gemini-2.5-pro" if PROVIDER == "openrouter" else "claude-sonnet-5-5")
 
 # USD per 1M tokens (input, output). OpenRouter reports real cost itself;
-# the Claude API does not, so these are used there.
-# OpenRouter prices supplied for the current model strategy.
+# the Claude API does not, so these are used there (docs pricing page, Nov 2026).
+# The OpenRouter rows were read from https://openrouter.ai/api/v1/models on 2026-11-21.
 PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),     # prompts up to 100k tokens
     "claude-sonnet-5-5": (2.00, 10.00),
@@ -75,7 +79,11 @@ def box_order(model: str) -> str:
 
 
 def reasoning(model: str) -> dict:
-    """Keep hidden reasoning off because the vision response is intentionally tiny JSON."""
+    """OpenRouter 'reasoning' setting per model. Hidden thinking is billed as output:
+    measured 2026-11-21, Claude Haiku 5.5 spent 260 of 274 output tokens thinking and then
+    returned no objects; Gemini 2.5 Pro used up the whole 700-token budget thinking and the
+    answer was cut off. A short JSON list needs no thinking. Gemini 2.5 Pro cannot switch
+    thinking off, so it gets the smallest budget instead (128 worked in our test)."""
     if "gemini" in model and "pro" in model:
         return {"max_tokens": 128}
     return {"enabled": False}
