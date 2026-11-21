@@ -1,196 +1,126 @@
 # Frugal Site Check
 
-**Film one minute around a business site. Official Swiss hazard maps decide what we look for,
-free code picks a few sharp frames, a free local detector finds vehicles and blurs people,
-and a small AI model finds what hail or water would hit first.**
-The expensive model only sees the frames that are still unclear. Built for the AXA challenge
-"Frugal use of Multimodal AI" at LauzHack 2026.
+## What it does
 
-- **Input:** an address (text) + a walk-around video (or one photo) = multimodal.
-- **Output for the customer:** the key frames with boxes on each object, how important each one is
-  at this address, a "do now before the storm" list and a "fix this year" list.
-- **Output for AXA:** a site score, a recommended action (no action / send tips / on-site check)
-  and a cost ledger showing what every step cost.
+Frugal Site Check helps a business owner prepare a property for hail and flooding.
 
-## The cascade (why it is frugal)
+The user enters an address and films about one minute while walking around the site.
+The app returns:
 
-| Step | What happens | Cost |
-|---|---|---|
-| 1 | Address -> coordinates -> hazard maps (geo.admin.ch, BAFU, MeteoSwiss) | free, cached |
-| 2 | Video -> ~6 key frames: 2 frames/s sampled, dark, blurry and repeated views dropped | free |
-| 3 | Local detector (YOLO11n, 5 MB) finds vehicles and people; **people blurred before upload** | free |
-| 4 | Map picks which object types to look for. Nothing elevated -> **stop, no AI** | free |
-| 5 | Small model: **all key frames in one call**, 512 px, compact JSON with boxes | small |
-| 6 | Strong model: **only frames the small model was unsure about**, 768 px | only when needed |
-| 7 | Fixed rules: importance = object weight x hazard level; advice; site score | free |
+- the main hail and water risks at that address;
+- the parts of the property that need attention;
+- a short list of things to do before the next storm;
+- improvements to plan for this year;
+- photos and boxes showing the evidence behind each recommendation.
 
-Every AI answer is cached, so repeating a demo costs nothing. The app shows the estimated cost
-next to a naive design (one full-HD frame per second to the strong model): for a 60 s video
-about 1,000x cheaper. Both sides use Claude's rule of one token per 28x28 pixels.
+The result is designed to be useful to a customer, an insurer, or someone preparing a site visit.
 
-Importance (0-6): >= 4 high, 2-3 medium, 1 low, 0 not relevant at this address.
-Low-confidence objects are shown as "uncertain" and not counted: a person should check them.
+## Why it is frugal
 
-## Files you will touch most
+The app does not send an entire video for processing.
 
-- `frugal/objects.py` – **the catalogue**: what to look for, hazard group, weight, why, "do now", "fix later". Tune texts and weights here.
-- `frugal/video.py` – key-frame picking and the filmstrip image.
-- `frugal/detect.py` – free local detector and people blurring.
-- `frugal/sitecheck.py` – the video cascade and the box drawing.
-- `frugal/vision.py` – the only code that calls a paid model (Claude API or OpenRouter).
+1. The address is checked against official Swiss hazard maps.
+2. Local video processing removes dark, blurry, and repeated frames.
+3. People are blurred before images leave the computer.
+4. Only a few useful frames are selected.
+5. The map determines which weaknesses matter at that location.
+6. A second review is requested only when an important finding is unclear.
+7. Clear rules turn the findings into recommendations and a site score.
 
-## The website (main demo): two pages
+This keeps the result explainable, reduces upload size, and records the real processing cost.
+Repeated checks are served from the cache.
 
-The Streamlit app (`streamlit run app.py`) stays as the fallback demo. The website is the main one:
+## Run the website
 
-- **Customer page** `http://localhost:8000/`: address + video -> what to do before a storm, what to fix
-  this year, hail and water risk at the address. No costs, no models, no tables. Works on a phone.
-- **Jury page** `http://localhost:8000/demo.html`: frames picked by free code, boxes on the key frames,
-  how the map decided what the AI looks for, measured cost next to two baselines, honest limits.
-  Both pages show the newest finished check, so a run started on one page appears on the other.
+Requirements:
 
-**One-time setup** (after the Python setup below; needs Node.js 18.18 or newer):
+- Python 3.10 or newer
+- Node.js 18.18 or newer
+- FFmpeg for video decoding
+
+Install the dependencies:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+cd web
+npm install
+npm run build
+cd ..
 ```
-pip install -r requirements.txt          # adds fastapi, uvicorn, python-multipart, httpx
-cd web && npm install && npm run build && cd ..
+
+Create a local `.env` file with your OpenRouter key:
+
+```text
+OPENROUTER_API_KEY=your_key_here
 ```
-**Start** (one program, one port):
-```
+
+Never commit `.env`. It is already ignored by Git.
+
+Start the website:
+
+```powershell
 uvicorn server:app --port 8000
 ```
-After changing anything in `web/`, run `npm run build` in `web/` again and reload the browser.
-To edit the design with instant reload: keep the server running and run `npm run dev` in `web/`,
-then open `http://localhost:3000`.
 
-**How it fits together:** `server.py` (FastAPI) calls the unchanged cascade `frugal.sitecheck.run`,
-keeps the last 5 results in memory and serves JSON plus images (annotated frames, object crops, the
-filmstrip). Only privacy-blurred frames are ever served. `web/` is a small Next.js app that is built
-once into plain files in `web/out/`, which the same server hands out.
+Open [http://localhost:8000/](http://localhost:8000/).
 
-**Measured on 2026-11-21** (real OpenRouter key, `eval/test_walk.mp4`, Route Cantonale, Lausanne):
-1 paid call to `google/gemini-2.5-flash-lite`, 1,568 tokens, **USD 0.000165 measured** (estimate 0.00014);
-the strong model was skipped. Same frames to `google/gemini-2.5-pro` would cost about 13x more,
-one HD frame per second to it about 230x more (both estimates). A repeat run comes from the cache: $0.
+The main page is for a property owner. The **Assessment details** page shows the selected frames,
+the map reasoning, the evidence, the usage, and the limitations.
 
-**Demo tips for the website**
-- Run your real site video once before presenting: the second run is instant and free (cache).
-- No key in `.env` -> a grey "demo mode (no AI key)" badge, and all AI answers are simulated.
-- If the hazard map does not answer, the pages say "map unavailable", never "low".
-- The storm-warning switch on the customer page is simulated: say so.
-- Upload a big 4K video ahead of time if you can: 300 MB takes a while over Wi-Fi.
+For frontend development, run this from `web/`:
 
-## Setup (about 10 minutes)
-
-1. Install Python 3.10 or newer from python.org (on macOS you may already have it: type `python3 --version` in Terminal).
-2. Open a terminal in this folder and run:
-   ```
-   python3 -m venv .venv
-   source .venv/bin/activate        # Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-   With the **fish** shell use `source .venv/bin/activate.fish` instead.
-   The first video run downloads the 5 MB detector model into `models/`.
-3. Copy `.env.example` to `.env` and put ONE key in: `ANTHROPIC_API_KEY=` (Claude API, used first)
-   or `OPENROUTER_API_KEY=`.
-   **Never commit `.env`** (it's already in `.gitignore`). Without a key the app runs in MOCK mode with fake answers.
-4. Start the app: `streamlit run app.py` → it opens in your browser.
-
-## First things to run at the hackathon
-
-```
-python -m pytest -q                                   # 33 offline tests, should all pass
-python tools/make_test_video.py                       # writes eval/test_walk.mp4 for a quick demo
-python tools/check_models.py                          # are the two model IDs available? prices?
-python tools/check_layers.py "Gerberngasse 10, Bern"  # do the hazard layers answer?
+```powershell
+npm run dev
 ```
 
-**Checked on 2026-11-21 (re-check if something breaks):**
-- **Models (OpenRouter).** Cheap `google/gemini-2.5-flash-lite`, strong `google/gemini-2.5-flash`,
-  naive baseline for the cost comparison `google/gemini-2.5-pro`. Claude Haiku on OpenRouter is
-  `anthropic/claude-haiku-5.5` (dot, not dash). On two public site photos Gemini flash-lite drew
-  tight, correct boxes; Claude Haiku's boxes were misplaced or loose. Gemini 2.5 Flash drew the same
-  boxes as Pro at about 1/5 of the cost. Only 2 photos: re-check with a real site video.
-- **Hidden "thinking" is switched off** (or capped at 128 tokens for Gemini Pro, which cannot turn it
-  off). With it on, Haiku spent its whole output budget thinking and returned nothing.
-- **Hazard maps** are read with the federal WMS (`wms.geo.admin.ch`, GetFeatureInfo), free and cached.
-  The older REST "identify" endpoint answers "No GeoTable was found" for these layers.
-  Route Cantonale 11, Lausanne: hail 3.5 cm (medium), no flood zone (water low).
-  Gerberngasse 10, Bern: inside Aquaprotect 100 + 500 (water high), hail 4 cm (high).
-  Hail values are in cm (MeteoSwiss legend). **Our assumption:** >= 3 cm = medium, >= 4 cm = high.
-  The flood layers only say "inside the zone", not how deep.
-- **Hail layer ID.** The 50-year hail-size layer still answers. The STAC collection
-  `ch.meteoschweiz.ogd-radar-derived-grid` is a downloadable hail climatology, not needed here.
-- **Box formats.** Gemini models answer boxes as [ymin, xmin, ymax, xmax] 0-1000, others are asked
-  for [xmin, ymin, xmax, ymax]; the parser also accepts fractions, pixels, dict boxes, renamed keys
-  and replies that were cut off. Override with `BOX_ORDER=xy` or `yx` in `.env` if a new model draws
-  boxes in the wrong place.
-- `check_layers.py` shows the raw map answer; the *Raw map attributes* box in the AXA view shows it live.
+Then open [http://localhost:3000/](http://localhost:3000/). The API still runs on port 8000.
 
-## Proof for the pitch
+## Project structure
 
-- **Video decoding.** On a Mac the app uses Apple's hardware decoder (AVFoundation) and falls back to
-  FFmpeg. Measured on an M2 with a 47 s 4K 60 fps HEVC iPhone clip (302 MB): 37 s before, 10-12 s now,
-  frames upright (rotation tag applied). Windows/Linux use FFmpeg only (slower, ~37 s per minute of 4K60).
-  Uploads are copied to a temp file, so a 300 MB video is not held in memory twice.
-- **Benchmark (accuracy vs cost).**
-  ```
-  python tools/benchmark_video.py --from-video walk.MOV eval/frames      # frames (people blurred) + label template
-  FRUGAL_MOCK=1 python tools/benchmark_video.py eval/frames eval/frames/labels_template.csv   # free dry run
-  python tools/benchmark_video.py eval/frames eval/frames/labels_template.csv                 # real, prints a cost estimate first
-  ```
-  Fill in `present` (y/n) in the template first. Output: a table, a CSV and `chart.png` for the slides.
-  Estimated cost of a real run (all three designs, upper bound): ~$0.02 for 40 frames with Gemini,
-  ~$0.11 with Claude Haiku/Sonnet. Mock charts are stamped "MOCK" and are not for the slides.
-- **Report.** "Download report" on the Site check tab saves a one-page HTML report (prints to one A4 page).
-- **Demo fallback.** Open the app as `http://localhost:8501/?demo=1` to get a "Run sample video" button.
-  `eval/test_walk.mp4` is not in git: run `python tools/make_test_video.py` once. It is a pan over a bus,
-  so use a real, pre-run site video for the actual demo.
+- `server.py` — web server and upload API.
+- `web/` — the customer website.
+- `frugal/geo.py` — address lookup and Swiss hazard maps.
+- `frugal/video.py` — frame selection and filmstrip creation.
+- `frugal/detect.py` — local object detection and people blurring.
+- `frugal/objects.py` — the catalogue of property weaknesses and advice.
+- `frugal/sitecheck.py` — the full inspection workflow.
+- `frugal/score.py` — deterministic scoring and recommendations.
+- `frugal/ledger.py` — processing usage and cost tracking.
+- `tests/` — offline tests.
 
-## The pieces, in plain words
+## Demo checklist
 
-- `frugal/config.py` – all settings: which models, image sizes, thresholds. Change things here, not in the logic.
-- `frugal/geo.py` – turns an address into Swiss coordinates and asks the federal map service what lies at that point. Converts coordinates itself, because the API once swapped its x/y fields.
-- `frugal/hazards.py` – reads the map answers and turns them into one level per group: low, medium or high.
-- `frugal/checklist.py` – the list of weak points to look for (light wells, low doors, blinds, skylights...) and the tip for each. Each question belongs to "water" or "hail" and is only asked if that hazard is elevated.
-- `frugal/photo.py` – free photo checks (too dark, blurry, small) and shrinking the image before sending it, because image size drives token cost.
-- `frugal/vision.py` – the only code that calls a paid model. Asks for a tiny JSON answer and handles messy replies. In MOCK mode it returns fake answers.
-- `frugal/score.py` – plain rules for score, action and tips, so an underwriter can see exactly why.
-- `frugal/ledger.py` – records every step with tokens, cost and time.
-- `frugal/pipeline.py` – runs the steps in order and stops as early as possible.
-- `app.py` – the web app: Site check (video), Single photo, AXA view, How it works.
-- `tools/benchmark.py` – accuracy vs cost on your own labelled photos (see below).
+1. Use a real address with a known hail or flood risk.
+2. Film in landscape at 1080p.
+3. Walk slowly and pause briefly at roofs, doors, windows, car parks, and basement openings.
+4. Run the check once before presenting so the repeat run is instant.
+5. Show one result, one evidence frame, and one recommendation rather than every screen.
 
-## The pitch chart: do this by hour 16
+The storm-warning switch is a presentation aid and is labelled as simulated.
 
-1. Take 20–40 photos of real houses (your own, friends', street views you're allowed to use).
-2. Fill in `eval/labels.csv` like `eval/labels_example.csv`: hazard levels plus the true y/n per question.
-3. Run `python tools/benchmark.py`. It compares always-cheap, always-strong and the cascade on accuracy and total cost.
+## Current limitations
 
-If the cascade gets close to the strong model's accuracy at a fraction of its cost, that's your headline.
-The "Also run the naive baseline" checkbox in the sidebar shows the same comparison live for one photo.
+- The inspection can only judge what the camera can see.
+- One walk-around video cannot prove the condition of a roof or anything behind a wall.
+- The local detector may not understand whether a vehicle is protected by a roof.
+- People are blurred, but number plates still need a separate privacy review.
+- The national flood maps are useful for triage but are not a replacement for detailed local maps.
+- The recommendations and weights are assumptions that AXA should tune with real inspection data.
 
-## Splitting the work (2 people)
+## The technical idea
 
-- **Person A – data & logic:** run the check scripts, fix `hazards.py` if needed, tune the questions and tips in `checklist.py`, run the benchmark.
-- **Person B – app & pitch:** collect and label photos, polish `app.py` (texts, layout), write the 2-minute demo script, record a backup video.
-- Both commit to the same GitHub repo, so the history shows both contributions.
+This is a multimodal web application: text from the address is combined with images extracted from
+the user's video. The system uses a small first pass and escalates only important uncertain findings.
 
-## Demo tips
+The current OpenRouter setup is:
 
-- Film in landscape at 1080p, walk slowly, pause 1-2 s on each roof, car park, door and basement window.
-- Use a real address with elevated hail or water hazard, or the developer switch "simulate hazard levels".
-- Turn on "Storm warning active (simulated)" to show the "do now" list. It is simulated: say so.
-- Run it once before presenting: the second run comes from the cache, so it is instant and free.
+- `qwen/qwen3-vl-8b-instruct` — primary vision model;
+- `openai/gpt-4o` — selective escalation for important uncertain findings;
+- `google/gemini-2.5-flash-lite` — optional comparison model.
 
-## Honest limits (say them in the pitch)
+The website records which steps ran, what evidence was found, and how much processing was used.
 
-- The app only judges what the camera sees: not roof strength, not what is behind walls.
-- The local detector cannot tell whether a car stands under a roof; check the boxes.
-- People are blurred; number plates are not yet. Frames are not stored. A data-protection review would be needed.
-- Weights in `objects.py` are our assumption for AXA to tune.
-
-- Aquaprotect is a coarse national flood overview and ignores existing protection; detailed cantonal hazard maps are better.
-- One photo can't show every side of a house; unclear answers are reported as unclear, not guessed.
-- This supports prevention and triage. It does not set premiums: Swiss natural-hazard insurance is pooled and solidarity-based.
-
-Data: BAFU (Aquaprotect, surface runoff hazard map), MeteoSwiss (hail hazard), swisstopo / geo.admin.ch.
+The goal is not to replace an expert. It is to make the first prevention check faster, clearer, and
+more consistent.

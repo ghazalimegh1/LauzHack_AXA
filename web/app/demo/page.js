@@ -1,9 +1,9 @@
 "use client";
-// The technical view for the jury: computer vision, the map's role, and the cost.
+// The assessment details page: image processing, the map's role, and efficiency.
 // Every number and box here comes from the real run (via the API); nothing is hard-coded.
 import { useEffect, useState } from "react";
 import CheckForm from "../../components/CheckForm";
-import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../../components/ui";
+import { Chip, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../../components/ui";
 import { frameUrl, getInfo, getLatest, runCheck, stripUrl } from "../../lib/api";
 import { COLOURS, GROUP_NAMES, riskText, times, usd } from "../../lib/format";
 
@@ -17,7 +17,7 @@ export default function DemoPage() {
   const [settings, setSettings] = useState({ k: 6, detector: true, simulate: false, water: 1, hail: 2 });
 
   useEffect(() => {
-    document.title = "Site Check: technical view";
+    document.title = "Site Check: assessment details";
     getInfo().then((i) => { setInfo(i); setSettings((s) => ({ ...s, k: i.keyframes, detector: i.detector })); })
       .catch(() => setError("The server did not answer. Is it running?"));
     getLatest().then((c) => c && setCheck(c)).catch(() => {});
@@ -46,16 +46,12 @@ export default function DemoPage() {
   return (
     <main className="page">
       <header className="top">
-        <span className="brand">Site Check <span className="muted">· technical view</span></span>
-        <span className="top-right"><DemoBadge info={info} /><a href="/">Customer view</a><b className="axa">AXA</b></span>
+        <span className="brand">Site Check <span className="muted">· assessment details</span></span>
+        <span className="top-right"><a href="/">Customer view</a><b className="axa">AXA</b></span>
       </header>
 
-      <Hero eyebrow="Technical view · for the jury" title="How the check works">
-        {info && (
-          <p>
-            Provider: {info.provider} · cheap model: {info.cheap_model} · strong model: {info.strong_model}
-          </p>
-        )}
+      <Hero eyebrow="Assessment details" title="How the check works">
+        <p>Official hazard maps and privacy-first image processing help identify what to protect.</p>
       </Hero>
 
       <section className="form-card">
@@ -109,12 +105,12 @@ function Results({ check, colours }) {
   const r = check.result;
   return (
     <div className="fade" key={check.jobId}>
-      {r.mock && <p className="note">Demo mode: AI answers are simulated, so boxes and costs are not real.</p>}
+      {r.mock && <p className="note">This result is illustrative and not a final assessment.</p>}
       {r.warning && <p className="error">{r.warning}</p>}
       <section className="block">
         <Eyebrow>Step 0 · the upload</Eyebrow>
         <h2>The uploaded video</h2>
-        <p className="lead">Shown for reference only. No AI sees this video; it only sees the key frames below.</p>
+        <p className="lead">Shown for reference only. The assessment uses the selected key frames below.</p>
         <VideoPlayer jobId={check.jobId} />
       </section>
       <Frames check={check} />
@@ -131,20 +127,20 @@ function Frames({ check }) {
   const f = check.result.frugal;
   const numbers = [
     [f.video_frames, "frames in video"], [f.sampled, "checked by free code"],
-    [f.picked, "key frames picked"], [f.images_sent, "images sent to AI"],
+    [f.picked, "key frames picked"], [f.images_sent, "images assessed"],
   ];
   return (
     <section className="block">
       <Eyebrow>Step 1 · free code</Eyebrow>
       <h2>Frames</h2>
-      <p className="lead">Free code drops dark, blurry and repeated views before any AI sees the video.</p>
+      <p className="lead">Dark, blurry and repeated views are removed before the assessment.</p>
       <div className="numbers">
         {numbers.map(([n, label]) => (
           <div key={label}><b>{Number(n).toLocaleString("en")}</b><span>{label}</span></div>
         ))}
       </div>
       <img className="strip" src={stripUrl(check.jobId)} alt="All checked frames; picked ones outlined in green" />
-      <p className="caption">Green = picked. Grey = skipped. No AI in this step.</p>
+      <p className="caption">Green = picked. Grey = skipped. This step is fully automatic.</p>
     </section>
   );
 }
@@ -163,9 +159,9 @@ function Found({ check, colours }) {
   }, []);
   return (
     <section className="block">
-      <Eyebrow>Step 2 · free detector + AI</Eyebrow>
+      <Eyebrow>Step 2 · image processing</Eyebrow>
       <h2>What the camera found</h2>
-      <p className="lead">Boxes come from the free detector and the AI models. People are blurred before upload.</p>
+      <p className="lead">Objects are identified in the selected frames, and people are blurred before upload.</p>
       <div className="frames">
         {r.frames.map((f) => (
           <button key={f.n} className="frame" onClick={() => setOpen(f.n)}>
@@ -201,13 +197,13 @@ function Found({ check, colours }) {
   );
 }
 
-// 3. The official map decides what the paid model is asked to look for.
+// 3. The official map decides which risks matter at this address.
 function MapDecision({ r }) {
   return (
     <section className="block">
       <Eyebrow>Step 3 · official hazard maps</Eyebrow>
       <h2>How the map decided</h2>
-      <p className="lead">Only object types that matter at this address are sent to the paid model.</p>
+      <p className="lead">Only object types that matter at this address are included in the assessment.</p>
       <div className="two">
         {["hail", "water"].map((g) => {
           const h = r.hazards[g];
@@ -219,11 +215,11 @@ function MapDecision({ r }) {
           );
         })}
       </div>
-      <p className="label">Asked the paid model to look for</p>
+      <p className="label">Risk factors checked</p>
       <div className="chips">
         {r.asked.length
           ? r.asked.map((a) => <Chip key={a.kind}>{a.name}</Chip>)
-          : <span className="muted">Nothing: no hazard is elevated here, so no paid AI call was made.</span>}
+          : <span className="muted">Nothing: no elevated hazard was found at this address.</span>}
       </div>
       {r.simulated_levels && <p className="muted small">Hazard levels were simulated for this run.</p>}
     </section>
@@ -234,7 +230,7 @@ function MapDecision({ r }) {
 function Cost({ r }) {
   const f = r.frugal;
   const fromCache = r.ledger.some((s) => s.kind === "ai" && s.note.includes("cache"));
-  const measured = r.mock ? "demo mode, no real cost" : fromCache ? "repeat run, from cache" : "measured";
+  const measured = r.mock ? "illustrative" : fromCache ? "repeat run, from cache" : "measured";
   const bars = [
     ["Our cascade (estimate)", f.ours_usd_est, ""],
     [`Same frames, ${f.baseline_model} (fair)`, f.same_frames_strong_usd, times(f.same_frames_strong_usd, f.ours_usd_est)],
@@ -243,13 +239,13 @@ function Cost({ r }) {
   const max = Math.max(...bars.map((b) => b[1]), 1e-12);
   return (
     <section className="block">
-      <Eyebrow>Step 4 · frugality</Eyebrow>
-      <h2>Cost</h2>
-      <p className="lead">The same frames could go to the big model; we only send what is needed.</p>
+      <Eyebrow>Step 4 · efficiency</Eyebrow>
+      <h2>Processing efficiency</h2>
+      <p className="lead">Only the information needed for a clear assessment is processed.</p>
       <div className="numbers">
         <div><b>{usd(r.totals.usd)}</b><span>this check, {measured}</span></div>
         <div><b>{usd(f.ours_usd_est)}</b><span>our estimate</span></div>
-        <div><b>{r.totals.ai_calls}</b><span>paid AI calls</span></div>
+        <div><b>{r.totals.ai_calls}</b><span>assessment calls</span></div>
       </div>
       <div className="bars">
         {bars.map(([label, value, mult]) => (
@@ -261,20 +257,19 @@ function Cost({ r }) {
         ))}
       </div>
       <table className="ledger">
-        <thead><tr><th>Step</th><th>Type</th><th>Model</th><th>Tokens</th><th>USD</th><th>ms</th></tr></thead>
+        <thead><tr><th>Step</th><th>Type</th><th>Usage</th><th>Cost</th><th>Time</th></tr></thead>
         <tbody>
           {r.ledger.map((s, i) => (
             <tr key={i}>
               <td>{s.name}{s.note && <small className="muted"> · {s.note}</small>}</td>
-              <td>{s.kind}</td><td>{s.model || "-"}</td>
-              <td>{(s.tok_in + s.tok_out).toLocaleString("en")}</td><td>{usd(s.usd)}</td><td>{s.ms}</td>
+              <td>{s.kind === "ai" ? "assessment" : s.kind}</td>
+              <td>{(s.tok_in + s.tok_out).toLocaleString("en")}</td><td>{usd(s.usd)}</td><td>{s.ms} ms</td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="caption">
-        Estimates use Claude&apos;s image token rule (1 token per 28x28 px) and list prices.
-        Measured numbers come from the provider&apos;s usage report.
+        Usage estimates are based on image size and the service usage report.
       </p>
     </section>
   );
@@ -288,7 +283,7 @@ function Limits() {
       <ul className="limits">
         <li>It only judges what the camera sees: not roof strength, not what is behind walls.</li>
         <li>Not seen does not mean safe: a missing box is not a clean bill of health.</li>
-        <li>Unsure frames go to a bigger model, then to a person.</li>
+        <li>Unclear frames are escalated for additional review.</li>
       </ul>
     </section>
   );

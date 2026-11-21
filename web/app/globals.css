@@ -139,7 +139,7 @@ h3 { font-family: var(--head); font-size: 22px; font-weight: 500; margin: 0 0 4p
 .storm .forecast { margin: 8px 0 24px; }
 .storm .countdown { color: var(--danger); }
 
-/* ---------- jury page ---------- */
+/* ---------- assessment details page ---------- */
 .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 8px 0 24px;
            border: 1px solid var(--line); }
 .numbers div { padding: 22px; display: grid; border-right: 1px solid var(--line); }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import CheckForm from "../components/CheckForm";
 import Forecast, { useForecast } from "../components/Forecast";
-import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../components/ui";
+import { Chip, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../components/ui";
 import { cropUrl, getInfo, getLatest, runCheck } from "../lib/api";
 import { COLOURS, riskText } from "../lib/format";
 
@@ -59,7 +59,7 @@ export default function CustomerPage() {
     <main className="page">
       <header className="top">
         <span className="brand">Site Check</span>
-        <span className="top-right"><DemoBadge info={info} /><b className="axa">AXA</b></span>
+        <span className="top-right"><b className="axa">AXA</b></span>
       </header>
 
       {showForm ? (
@@ -79,7 +79,7 @@ export default function CustomerPage() {
       )}
 
       <footer className="foot">
-        <a href="/demo.html">For the jury: technical view</a>
+        <a href="/demo.html">View assessment details</a>
       </footer>
     </main>
   );
