@@ -2,7 +2,7 @@
 // The customer page: a business owner sees only what to do. No costs, models or tables.
 import { useEffect, useState } from "react";
 import CheckForm from "../components/CheckForm";
-import { Chip, DemoBadge, Spinner, Tag } from "../components/ui";
+import { Chip, DemoBadge, Eyebrow, Hero, Spinner, Tag } from "../components/ui";
 import { cropUrl, getInfo, getLatest, runCheck } from "../lib/api";
 import { COLOURS, riskText } from "../lib/format";
 
@@ -45,22 +45,23 @@ export default function CustomerPage() {
 
   const colours = (info && info.colours) || COLOURS;
   return (
-    <main className="page light">
+    <main className="page">
       <header className="top">
         <span className="brand">Site Check</span>
         <span className="top-right"><DemoBadge info={info} /><b className="axa">AXA</b></span>
       </header>
 
       {showForm ? (
-        <section className="intro">
-          <h1>What would a storm hit first?</h1>
-          <p className="lead">Film a one-minute walk around your site. We tell you what to protect.</p>
-          <div className="card">
-            <CheckForm onSubmit={onSubmit} busy={busy} buttonText="Check my site" />
+        <>
+          <Hero eyebrow="Site check · storm prevention" title="What would a storm hit first?">
+            <p>Film a one-minute walk around your site. We tell you what to protect.</p>
+          </Hero>
+          <section className="form-card">
+            <CheckForm onSubmit={onSubmit} busy={busy} buttonText="→  Check my site" />
             {busy && <Spinner>Looking at your video... this takes about half a minute.</Spinner>}
             {error && <p className="error">{error}</p>}
-          </div>
-        </section>
+          </section>
+        </>
       ) : (
         <Result check={check} colours={colours} storm={storm} setStorm={setStorm}
                 onNew={() => { setShowForm(true); setStorm(false); }} />
@@ -88,18 +89,21 @@ function Result({ check, colours, storm, setStorm, onNew }) {
 
       {storm ? (
         <section className="storm">
-          <h2>Storm warning: do this now</h2>
+          <Eyebrow>Storm warning (simulated)</Eyebrow>
+          <h2>Do this now</h2>
           <NowList items={now} jobId={check.jobId} colours={colours} />
         </section>
       ) : (
         <>
           <Headline r={r} />
           <section className="block">
+            <Eyebrow>Before a storm</Eyebrow>
             <h2>Do this before a storm</h2>
             <NowList items={now} jobId={check.jobId} colours={colours} />
           </section>
           {r.result.items.length > 0 && (
             <section className="block">
+              <Eyebrow>This year</Eyebrow>
               <h2>Fix this year</h2>
               <ul className="later">
                 {r.result.items.map((i) => <li key={i.kind}>{i.later}</li>)}
@@ -119,22 +123,22 @@ function Headline({ r }) {
   const where = r.place ? r.place.label : r.address;
   if (!r.map_ok) {
     return (
-      <section className="intro">
-        <h1>We could not reach the official hazard maps</h1>
-        <p className="lead">Please try again in a few minutes. Address: {where}</p>
-      </section>
+      <Hero eyebrow="Your result" title="We could not reach the official hazard maps">
+        <p>Please try again in a few minutes. Address: {where}</p>
+      </Hero>
     );
   }
   return (
-    <section className="intro">
-      <h1>{HEADLINES[r.result.action] || r.result.action}</h1>
-      <p className="muted">{where}</p>
-      <div className="chips">
-        <Chip>Hail risk here: {riskText(r.hazards.hail)}</Chip>
-        <Chip>Water risk here: {riskText(r.hazards.water)}</Chip>
-      </div>
+    <>
+      <Hero eyebrow="Your result" title={HEADLINES[r.result.action] || r.result.action}>
+        <p>{where}</p>
+        <div className="chips">
+          <Chip>Hail risk here: {riskText(r.hazards.hail)}</Chip>
+          <Chip>Water risk here: {riskText(r.hazards.water)}</Chip>
+        </div>
+      </Hero>
       {r.warning && <p className="quiet">Part of the check could not run. Please try again later.</p>}
-    </section>
+    </>
   );
 }
 

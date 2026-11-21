@@ -19,8 +19,8 @@ from . import config, detect, geo, hazards, objects, photo, score, video, vision
 from .ledger import Ledger
 
 # One set of importance colours for boxes (drawn here) and tags (app + website), so they match.
-COLOURS = {"high": "#D70015", "medium": "#B25000", "low": "#F9A825",
-           "not relevant here": "#8E8E93", "privacy": "#2997FF", "uncertain": "#636366"}
+COLOURS = {"high": "#C62828", "medium": "#E8710A", "low": "#F2A900",
+           "not relevant here": "#999999", "privacy": "#3B3FD8", "uncertain": "#5F5F5F"}
 PROMPT_TOKENS = 350   # rough size of our instructions, for the estimate only
 
 

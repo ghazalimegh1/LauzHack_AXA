@@ -3,8 +3,8 @@
 // Same colours as COLOURS in frugal/sitecheck.py (the boxes on the frames). Used until
 // /api/info has answered, so tags never flash without colour.
 export const COLOURS = {
-  high: "#D70015", medium: "#B25000", low: "#F9A825",
-  "not relevant here": "#8E8E93", privacy: "#2997FF", uncertain: "#636366",
+  high: "#C62828", medium: "#E8710A", low: "#F2A900",
+  "not relevant here": "#999999", privacy: "#3B3FD8", uncertain: "#5F5F5F",
 };
 
 export const GROUP_NAMES = { hail: "Hail", water: "Water" };
