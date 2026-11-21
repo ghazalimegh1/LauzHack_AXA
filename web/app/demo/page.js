@@ -82,26 +82,23 @@ function Camera({ job }) {
   const people = r.people_blurred;
   return (
     <Section id="camera" title="What the camera found" paper
-      intro="The key frames as they were sent to the AI, with every object found. Click a frame to enlarge it.">
-      <div className="frames">
-        {r.keyframes.map((k) => {
-          const n = r.findings.filter((f) => f.frame === k.index).length;
-          return (
-            <button type="button" key={k.index} onClick={() => setOpen(k.index)}>
-              <img src={img.keyframe(job.id, k.index)} alt={`Key frame at ${clock(k.t)}`} loading="lazy" />
-              <span className="label">
-                {clock(k.t)} · {n} object{n === 1 ? "" : "s"}{k.brightened ? " · brightened" : ""}
-              </span>
+      intro="Boxes come from the free detector and the AI models. People are blurred before upload.">
+      <div className="camstrip" tabIndex={0} aria-label="Key frames with the objects found">
+        {r.keyframes.map((k) => (
+          <figure key={k.index}>
+            <button type="button" onClick={() => setOpen(k.index)} aria-label={`Enlarge key frame ${k.index + 1}`}>
+              <img src={img.keyframe(job.id, k.index)} alt={`Key frame ${k.index + 1} at ${Math.round(k.t)} s`} loading="lazy" />
             </button>
-          );
-        })}
+            <figcaption>#{k.index + 1} · {Math.round(k.t)} s{k.brightened ? " · brightened" : ""}</figcaption>
+          </figure>
+        ))}
       </div>
-      <div className="legend" style={{ border: 0, padding: "18px 0 0" }}>
-        <span><i className="sq" style={{ background: RISK.high }} />high</span>
-        <span><i className="sq" style={{ background: RISK.medium }} />medium</span>
-        <span><i className="sq" style={{ background: RISK.low }} />low</span>
-        <span><i className="sq" style={{ background: RISK.none }} />not relevant here</span>
-        <span><i className="sq" style={{ background: RISK.uncertain }} />uncertain</span>
+      <div className="taglegend">
+        <span className="tag high">high</span>
+        <span className="tag medium">medium</span>
+        <span className="tag low">low</span>
+        <span className="tag">not relevant here</span>
+        <span className="tag privacy">privacy</span>
       </div>
       <p style={{ marginTop: 14 }}>
         <b>{people} {people === 1 ? "person was" : "people were"} found and blurred before upload.</b>
@@ -123,31 +120,27 @@ function Frames({ job }) {
   const r = job.result;
   const f = r.frames;
   const steps = [
-    [f.in_video, "frames in the video"],
-    [f.sampled, "checked by free code (2 per second)"],
-    [f.picked, "picked as key frames"],
-    [f.assessed, "images assessed by AI"],
+    [f.in_video, "frames in video"],
+    [f.sampled, "checked by free code"],
+    [f.picked, "key frames picked"],
+    [f.assessed, "images sent to AI"],
   ];
   return (
     <Section id="frames" title="Frames"
-      intro="Free code measures every sampled frame: too dark, overexposed or blurred by walking is dropped, judged against this video's own median. Each part of the walk gives its sharpest frame.">
+      intro="Free code drops dark, blurry and repeated views before any AI sees the video.">
       <div className="funnel">
         {steps.map(([n, text]) => (
           <div key={text}>
             <b>{n.toLocaleString("en-US")}</b>
-            <span className="quiet">{text}</span>
+            <span className="label">{text}</span>
           </div>
         ))}
       </div>
-      <div className="strip" tabIndex={0} aria-label="Filmstrip of all sampled frames">
-        {r.samples.map((s) => (
-          <figure key={s.index} className={s.status === "picked" ? "picked" : ""} title={s.reason || "picked"}>
-            <img src={img.thumb(job.id, s.index)} alt="" loading="lazy" />
-            <figcaption>{clock(s.t)} · {s.status === "picked" ? "picked" : s.reason}</figcaption>
-          </figure>
-        ))}
+      <div className="sheet">
+        <img src={`/api/jobs/${job.id}/filmstrip.jpg`}
+          alt={`All ${f.sampled} frames checked by free code; ${f.picked} picked, framed in green`} />
       </div>
-      <p className="quiet">Green = picked. Grey = skipped, with the reason. Images assessed counts each image sent, including second looks.</p>
+      <p className="quiet">Green = picked. Grey = skipped, with the reason. No AI in this step.</p>
     </Section>
   );
 }
@@ -255,7 +248,7 @@ function Confidence({ job }) {
   const r = job.result;
   return (
     <Section id="confidence" title="Detection confidence" paper
-      intro={`Every object found. Below ${pct(0.6)} confidence (${pct(0.5)} for the local detector) an object is uncertain: shown, but not counted.`}>
+      intro={`Every object found and counted. Objects below ${pct(0.6)} confidence (${pct(0.5)} for the local detector) are left out.`}>
       {r.findings.length === 0 ? (
         <p>No objects were found in the key frames.</p>
       ) : (
@@ -271,9 +264,7 @@ function Confidence({ job }) {
                   <td>{f.name}{f.detail ? <small className="quiet"> · {f.detail}</small> : null}</td>
                   <td>{f.frame + 1} · {clock(f.t)}</td>
                   <td>
-                    <span className={`tag ${f.uncertain ? "uncertain" : f.label === "not relevant here" ? "" : f.label}`}>
-                      {f.uncertain ? "uncertain" : f.label}
-                    </span>{" "}
+                    <span className={`tag ${f.label === "not relevant here" ? "" : f.label}`}>{f.label}</span>{" "}
                     <small className="quiet">score {f.score}</small>
                   </td>
                   <td className="num">{pct(f.confidence)}</td>

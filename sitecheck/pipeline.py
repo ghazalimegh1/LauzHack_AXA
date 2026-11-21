@@ -74,19 +74,21 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                              "brightened": brightened, "width": img.shape[1],
                              "height": img.shape[0], "people": 0})
         row["note"] = f"{len(samples)} sampled, {len(picked)} picked"
-    usable = sum(1 for s in samples if s.reason in ("", "same view as a pick", "sharper one picked"))
+    usable = sum(1 for s in samples if s.reason in ("", "same view", "sharper nearby"))
 
     # 3) free detector: vehicles + people, blur people (free)
     progress("Blurring people and finding vehicles on this computer")
-    findings, people_total, detector_ok = [], 0, True
+    findings, people, people_total, detector_ok = [], [], 0, True
     with ledger.step("Find vehicles and people, blur people (YOLO11n, local)") as row:
         try:
             for meta, img in zip(key_meta, key_imgs):
                 found = privacy.detect(img)
-                people = [d for d in found if d["kind"] == "person"]
-                meta["people"] = len(people)
-                people_total += len(people)
-                key_imgs[meta["index"]] = privacy.blur_people(img, people)
+                persons = [d for d in found if d["kind"] == "person"]
+                meta["people"] = len(persons)
+                people_total += len(persons)
+                people += [{"frame": meta["index"], "t": meta["t"], "box": [round(v, 4) for v in d["box"]],
+                            "confidence": d["confidence"]} for d in persons]
+                key_imgs[meta["index"]] = privacy.blur_people(img, persons)
                 if detector_on:
                     for d in found:
                         if d["kind"] == "vehicle":
@@ -126,15 +128,16 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                 ans = ask(settings.CHEAP_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
                           settings.CHEAP_MAX_OUT)
                 _book(row, ans, ai_info, len(imgs))
-                objects, unsure_frames = vision.read_answer(ai.parse_json(ans["text"]), kinds, len(imgs))
+                objects, unsure_frames = vision.read_answer(ans["text"], kinds, len(imgs),
+                                                            sent_sizes["cheap"])
                 for o in objects:
-                    meta = key_meta[o["frame"] - 1]
+                    meta = key_meta[o["frame"]]
                     findings.append({"frame": meta["index"], "t": meta["t"], "kind": o["kind"],
                                      "box": o["box"], "confidence": o["confidence"],
                                      "source": "cheap model", "model": ans["model"], "detail": ""})
                     if o["confidence"] < settings.UNSURE_BELOW:
                         unsure_frames.add(o["frame"])
-            except (ai.AIError, ValueError) as exc:
+            except ai.AIError as exc:
                 ai_info["status"] = "failed"
                 row["note"] = "no answer: " + type(exc).__name__
 
@@ -145,24 +148,24 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
             with ledger.step(f"Second look: {len(order)} unclear frame(s)", "AI") as row:
                 imgs = []
                 for n in order:
-                    data, size = vision.jpeg(key_imgs[n - 1], settings.STRONG_IMG_PX, 85)
+                    data, size = vision.jpeg(key_imgs[n], settings.STRONG_IMG_PX, 85)
                     imgs.append(data)
                     sent_sizes["strong"].append(size)
                 try:
                     ans = ask(settings.STRONG_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
                               settings.STRONG_MAX_OUT)
                     _book(row, ans, ai_info, len(imgs))
-                    objects, _ = vision.read_answer(ai.parse_json(ans["text"]), kinds, len(imgs))
-                    redo = {n - 1 for n in order}
+                    objects, _ = vision.read_answer(ans["text"], kinds, len(imgs), sent_sizes["strong"])
+                    redo = set(order)
                     findings = [f for f in findings
                                 if not (f["source"] == "cheap model" and f["frame"] in redo)]
                     for o in objects:
-                        meta = key_meta[order[o["frame"] - 1] - 1]
+                        meta = key_meta[order[o["frame"]]]
                         findings.append({"frame": meta["index"], "t": meta["t"], "kind": o["kind"],
                                          "box": o["box"], "confidence": o["confidence"],
                                          "source": "strong model", "model": ans["model"],
                                          "detail": ""})
-                except (ai.AIError, ValueError) as exc:
+                except ai.AIError as exc:
                     row["note"] = "no answer, first look kept: " + type(exc).__name__
                     ai_info["second_look_failed"] = True
 
@@ -170,6 +173,10 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
     progress("Putting your results together")
     with ledger.step("Apply rules (importance = weight x hazard level)") as row:
         findings = [rules.score_finding(f, levels) for f in findings]
+        # Uncertain finds are not shown anywhere (team decision): only counted here, so the
+        # customer page can say that an expert should take a look.
+        unsure = [f for f in findings if f["uncertain"]]
+        findings = [f for f in findings if not f["uncertain"]]
         findings.sort(key=lambda f: (f["frame"], -f["confidence"]))
         for i, f in enumerate(findings):
             f["id"] = i
@@ -197,6 +204,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "weak_points": points,
         "action": action,
         "people_blurred": people_total,
+        "people": people,
+        "uncertain_count": len(unsure),
         "ai": ai_info,
         "ledger": ledger.rows,
         "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs)),

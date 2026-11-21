@@ -3,7 +3,7 @@
 // Pieces of the customer result that the details page reuses too.
 
 import { img } from "../lib/api";
-import { hazardWord } from "../lib/format";
+import { clock, hazardWord } from "../lib/format";
 
 export function HazardChips({ hazards }) {
   const rows = [
@@ -29,25 +29,41 @@ export function counted(result) {
   return (result.weak_points || []).filter((w) => w.status === "counted");
 }
 
-export function WeakCards({ points, jobId, field }) {
+// "Do this before a storm": one row per thing found, with its close-up from the video,
+// its name, the risk tag and the quick action (the team's earlier row design).
+export function NowList({ points, jobId }) {
   return (
-    <div className="cards">
+    <ol className="now">
       {points.map((w, i) => (
-        <article className="card reveal" key={w.kind} style={{ animationDelay: `${i * 60}ms` }}>
-          <div className="photo">
-            <img src={img.crop(jobId, w.best)} alt={`${w.name} in your video`} loading="lazy" />
+        <li className="now-card reveal" key={w.kind} style={{ animationDelay: `${i * 60}ms` }}>
+          <img src={img.crop(jobId, w.best)} alt={`${w.name} in your video`} loading="lazy" />
+          <div>
+            <p className="now-title">
+              {w.name}{w.count > 1 ? ` (${w.count}×)` : ""} <span className={`tag ${w.label}`}>{w.label} risk</span>
+            </p>
+            <p>{w.now}</p>
           </div>
-          <div className="body">
-            <span className={`tag ${w.label}`}>{w.label} risk</span>
-            <h3>
-              {w.name}
-              {w.count > 1 ? ` (${w.count}×)` : ""}
-            </h3>
-            <p>{w[field]}</p>
-            {field === "now" && <p className="why">{w.why}</p>}
-          </div>
-        </article>
+        </li>
       ))}
-    </div>
+    </ol>
+  );
+}
+
+// "Fix this year": the same row design, but it shows something else: the lasting fix as the
+// title, the wider view of where on the site it was seen, and why it matters.
+export function LaterList({ points, jobId }) {
+  return (
+    <ol className="now later-list">
+      {points.map((w, i) => (
+        <li className="now-card reveal" key={w.kind} style={{ animationDelay: `${i * 60}ms` }}>
+          <img src={img.keyframe(jobId, w.frame)} alt={`Where the ${w.name.toLowerCase()} was seen on your site`} loading="lazy" />
+          <div>
+            <p className="now-title">{w.later}</p>
+            <p className="quiet">For: {w.name.toLowerCase()} · seen at {w.seen_at.map(clock).join(", ")} in your video</p>
+            <p className="why">{w.why}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

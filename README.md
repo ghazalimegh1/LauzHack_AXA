@@ -59,12 +59,12 @@ Both pages show the newest finished check.
 | Step | What | Cost |
 | --- | --- | --- |
 | 1 | Address -> coordinates (geo.admin.ch), then the official hail and surface-water/flood maps at that point (geo.admin.ch WMS). Level 0-2 per hazard. If the map does not answer: "map unavailable", never "low". | free |
-| 2 | Key frames: 2 frames per second, drop dark / overexposed / blurry ones (compared with the video's own median, lamps masked), sharpest frame of each part of the walk, no repeated views, brighten dim ones. Default 6. | free |
-| 3 | YOLO11n on this computer finds vehicles and people. People are blurred before any image leaves the computer. | free |
+| 2 | Key frames (the team's earlier frame picker, ported): 2 frames per second; drop dark / overexposed / blurry ones, judged against the video's own median; "walking sharpness" clips street lamps and lets the weaker of the two edge directions count, because walking smears one direction; best frame of each equal part of the walk, unless a 32×18 miniature shows the same view as a frame already picked; brighten dim ones. Default 6. | free |
+| 3 | YOLO11n on this computer finds vehicles and people (the team's earlier detector code: confidence from 35%, a vehicle counts from 50%). People are blurred before any image leaves the computer. | free |
 | 4 | The map decides what the AI looks for: only object types whose hazard is at least level 1. Vehicles are left to the free detector. | free |
-| 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. | paid |
+| 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. Prompt and answer reader are the team's earlier ones (compact JSON, boxes on a 0-1000 grid, cut-off answers still give their complete objects). | paid |
 | 6 | Strong model `google/gemini-2.5-flash`: only frames the cheap model was unsure about, 768 px. | paid |
-| 7 | Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Low confidence = "uncertain" (shown, not counted). Action: on-site prevention check / targeted tips / no action. | free |
+| 7 | Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Finds below 60% confidence (50% for the detector) are left out everywhere; the customer page only says that an expert should take a look. Action: on-site prevention check / targeted tips / no action. | free |
 
 Busy or broken model answers are retried after 2 s and 5 s, then sent to a fallback
 (flash-lite -> gemini-3.1-flash-lite -> gemini-2.5-flash). Answers are cached, so running
@@ -77,7 +77,8 @@ AI only looks for skylights, solar panels, blinds and goods/machines.
 
 | Video | Key frames | AI calls | Cost (billed by OpenRouter) | Found |
 | --- | --- | --- | --- | --- |
-| `IMG_2408.MOV` (night walk, 24 s) | 6 | 2 | $0.0013 | 1 parked car (high), external blinds in 2 frames (medium), goods or machines outside in 1 frame (medium) -> "Propose an on-site prevention check" |
+| `IMG_2406.MOV` (daytime walk, 41 s) | 6 (at 0, 9, 13.5, 23, 34, 34.5 s: the same picks as the earlier app) | 1 | $0.00032 (Flash-Lite only) | parked cars (high), skylight / glass roof and external blinds (medium), goods or machines outside at 23 s and 34 s (medium); 5 people blurred -> "Propose an on-site prevention check" |
+| `IMG_2408.MOV` (night walk, 24 s) | 6 | 2 | $0.0012 (Flash-Lite + Flash for 6 unclear frames) | 1 parked car (high), goods or machines outside at 0 s and 6.5 s (medium), external blinds (medium) -> "Propose an on-site prevention check" |
 | `IMG_1420.MOV` (47 s, indoor room, camera hardly moves) | 2 (all other frames show the same view) | 1-2 | $0.00036 (Flash-Lite + Flash); $0.00064 in a second run where Flash-Lite was busy and the fallback gemini-3.1-flash-lite answered | nothing -> "No action needed" |
 
 Same estimate rule for all three designs (night video): ours $0.0015, the same frames on

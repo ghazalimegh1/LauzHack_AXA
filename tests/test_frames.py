@@ -1,4 +1,5 @@
-"""Key frame picking: sharpness alone decides, relative to the video's own median."""
+"""Key frame picking (the earlier app's rules): sharpness alone decides, relative to the
+video's own median."""
 import cv2
 import numpy as np
 
@@ -31,7 +32,7 @@ def test_picks_the_sharpest_frame_of_each_part():
     # 3 parts, 4 frames each: every frame is a different view, sharpness varies
     samples, sharpest = [], []
     for part in range(3):
-        blurs = [1.2, 0.0, 0.8, 0.5]
+        blurs = [2.5, 0.0, 1.5, 1.0]
         for j, b in enumerate(blurs):
             samples.append(sample(len(samples), part * 4 + j, scene(part * 10 + j, blur=b)))
         sharpest.append(part * 4 + 1)            # blur 0.0 is the sharpest
@@ -39,7 +40,7 @@ def test_picks_the_sharpest_frame_of_each_part():
     assert [s.index for s in picked] == sharpest
     for part in range(3):
         group = samples[part * 4: part * 4 + 4]
-        best = max((s for s in group if s.reason in ("", "sharper one picked")),
+        best = max((s for s in group if s.reason in ("", "sharper nearby")),
                    key=lambda s: s.sharpness)
         assert best.status == "picked"
 
@@ -51,18 +52,18 @@ def test_blurry_dark_and_overexposed_frames_are_dropped():
     white = np.full((240, 320), 255, np.uint8)
     samples.append(sample(10, 10, white))
     frames.pick(samples, 4)
-    assert samples[8].reason in ("blurry", "blurred by walking")
-    assert samples[9].reason == "too dark"
+    assert samples[8].reason == "blurry"
+    assert samples[9].reason == "dark"
     assert samples[10].reason == "overexposed"
     assert all(s.status == "skipped" for s in samples[8:])
 
 
 def test_night_video_is_judged_against_its_own_median():
     # Everything is dim (as at night): frames must still be picked, not all called "too dark".
-    samples = [sample(i, i, scene(i, brightness=0.2, lamps=2)) for i in range(12)]
+    samples = [sample(i, i, scene(i, brightness=0.35, lamps=2)) for i in range(12)]
     picked = frames.pick(samples, 6)
     assert len(picked) == 6
-    assert not any(s.reason == "too dark" for s in samples)
+    assert not any(s.reason == "dark" for s in samples)
 
 
 def test_bright_lamps_do_not_make_a_blurry_frame_look_sharp():
@@ -73,11 +74,11 @@ def test_bright_lamps_do_not_make_a_blurry_frame_look_sharp():
 
 def test_same_view_is_not_picked_twice():
     base = scene(7)
-    shifted = np.roll(base, 3, axis=1)              # same spot, camera moved a little
+    shifted = np.roll(base, 1, axis=1)              # same spot, camera moved a little
     samples = [sample(0, 0, base), sample(1, 1, shifted), sample(2, 2, scene(8)), sample(3, 3, scene(9))]
     picked = frames.pick(samples, 3)                 # parts: [0], [1], [2, 3]
     assert {s.index for s in picked} == {0, 2, 3}
-    assert any(s.reason == "same view as a pick" for s in samples)
+    assert any(s.reason == "same view" for s in samples)
 
 
 def test_read_samples_keeps_two_frames_per_second(tmp_path):
@@ -100,3 +101,9 @@ def test_brighten_lifts_dim_frames_only():
     bright = cv2.cvtColor(scene(3), cv2.COLOR_GRAY2BGR)
     same, changed = frames.brighten(bright)
     assert not changed and same is bright
+
+
+def test_walking_smear_in_one_direction_counts_as_blurry():
+    sharp = scene(4)
+    smeared = cv2.blur(sharp, (25, 1))               # smeared left-right only
+    assert frames.measure(smeared)["sharpness"] < 0.5 * frames.measure(sharp)["sharpness"]

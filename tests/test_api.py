@@ -1,6 +1,7 @@
 """API endpoints, job handling and cache headers. The pipeline is replaced by a fake."""
 import time
 
+import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
@@ -18,7 +19,11 @@ def fake_run(video_path, address, progress=lambda t: None, **options):
     result = {"address": {"label": address, "lat": 46.5, "lon": 6.6}, "findings": [finding],
               "options": {k: v for k, v in options.items() if k != "simulate"},
               "simulate": options.get("simulate")}
-    return result, {"keyframes": [img], "thumbs": [b"\xff\xd8thumb"]}
+    result["people"] = [{"frame": 0, "t": 1.0, "box": [0.6, 0.1, 0.8, 0.9], "confidence": 0.8}]
+    result["samples"] = [{"index": 0, "t": 0.0, "status": "picked", "reason": ""},
+                         {"index": 1, "t": 0.5, "status": "skipped", "reason": "blurry"}]
+    thumb = cv2.imencode(".jpg", np.full((90, 160, 3), 90, np.uint8))[1].tobytes()
+    return result, {"keyframes": [img], "thumbs": [thumb, thumb]}
 
 
 @pytest.fixture
@@ -72,7 +77,8 @@ def test_analyze_poll_latest_and_images(client):
     assert body["result"]["options"] == {"keyframes": 8, "detector_on": False}
     assert body["result"]["simulate"] == {"hail": 2, "water": 0}
     assert client.get("/api/latest").json()["id"] == job_id
-    for path in ("keyframes/0.jpg", "keyframes/0.jpg?boxes=0", "crops/0.jpg", "thumbs/0.jpg"):
+    for path in ("keyframes/0.jpg", "keyframes/0.jpg?boxes=0", "crops/0.jpg", "thumbs/0.jpg",
+                 "filmstrip.jpg"):
         r = client.get(f"/api/jobs/{job_id}/{path}")
         assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg", path
     assert client.get(f"/api/jobs/{job_id}/keyframes/5.jpg").status_code == 404

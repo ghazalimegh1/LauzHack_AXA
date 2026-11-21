@@ -75,13 +75,31 @@ def test_price_fallback_when_no_cost_reported():
 
 
 def test_parse_answer_with_fences_and_bad_entries():
-    text = '```json\n{"objects": [{"frame": 1, "type": "glass_roof", "box": [100, 200, 300, 400], ' \
-           '"confidence": 0.7}, {"frame": 9, "type": "glass_roof", "box": [1, 2, 3, 4]}, ' \
-           '{"frame": 1, "type": "spaceship", "box": [0, 0, 500, 500]}], "unsure_frames": [2, 7]}\n```'
-    objs, unsure = vision.read_answer(ai.parse_json(text), ["glass_roof"], 2)
-    assert len(objs) == 1
+    text = '```json\n{"o": [{"f": 0, "t": "glass_roof", "b": [100, 200, 300, 400], "c": 0.7}, ' \
+           '{"f": 9, "t": "glass_roof", "b": [1, 2, 3, 4]}, ' \
+           '{"f": 0, "t": "spaceship", "b": [0, 0, 500, 500]}], "u": [1, 7]}\n```'
+    objs, unclear = vision.read_answer(text, ["glass_roof"], 2)
+    assert len(objs) == 1 and objs[0]["frame"] == 0
     assert objs[0]["box"] == [0.2, 0.1, 0.4, 0.3]       # [ymin,xmin,ymax,xmax] -> [x0,y0,x1,y1]
-    assert unsure == {2}
+    assert unclear == {1}
+
+
+def test_cut_off_answer_keeps_complete_objects():
+    text = '{"o":[{"f":1,"t":"solar_panel","b":[10,20,110,220],"c":0.9},{"f":0,"t":"solar_pa'
+    objs, _ = vision.read_answer(text, ["solar_panel"], 2)
+    assert [o["frame"] for o in objs] == [1]
+
+
+def test_long_key_names_are_accepted():
+    text = '{"objects":[{"frame":0,"type":"ramp_down","box":{"xmin":100,"ymin":100,"xmax":300,"ymax":400},"confidence":0.8}]}'
+    objs, _ = vision.read_answer(text, ["ramp_down"], 1)
+    assert objs[0]["box"] == [0.1, 0.1, 0.3, 0.4]
+
+
+def test_prompt_puts_frames_first_and_explains_unclear():
+    parts = vision.parts_for(vision.prompt(["glass_roof"], 2), [b"a", b"b"])
+    assert parts[:4] == ["Frame 0:", b"a", "Frame 1:", b"b"]
+    assert "a clear frame without these objects is not unclear" in parts[-1]
 
 
 def test_estimate_rule_is_shared():

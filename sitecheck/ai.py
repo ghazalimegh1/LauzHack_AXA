@@ -42,7 +42,6 @@ def _http_post(model: str, parts: list, max_tokens: int):
         "messages": [{"role": "user", "content": _content(parts)}],
         "max_tokens": max_tokens,
         "temperature": 0,
-        "response_format": {"type": "json_object"},
         "reasoning": {"enabled": False},   # hidden thinking is billed and not needed here
         "usage": {"include": True},        # OpenRouter then reports the real cost
     }

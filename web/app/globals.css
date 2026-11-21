@@ -85,9 +85,9 @@ p { margin: 0; }
 .hero h1 { max-width: 15ch; }
 .hero .lead { margin-top: 20px; max-width: 46ch; font-size: clamp(1.05rem, 1.6vw, 1.3rem); color: rgba(255, 255, 255, 0.86); }
 .hero .place { margin-top: 26px; font-size: 1.15rem; color: rgba(255, 255, 255, 0.92); }
-.pixels { position: absolute; right: 0; bottom: 0; z-index: 1; width: min(46vw, 420px); height: auto; pointer-events: none; }
+.pixels { position: absolute; right: calc(var(--gutter) + 8px); top: 50%; transform: translateY(-38%); z-index: 1; width: clamp(150px, 20vw, 270px); height: auto; pointer-events: none; }
 .pixels rect { animation: pixel 6s var(--ease) infinite alternate; }
-@keyframes pixel { from { opacity: 1; } to { opacity: 0.35; } }
+@keyframes pixel { 0%, 55% { opacity: 1; } 100% { opacity: 0.25; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .chip {
@@ -313,7 +313,38 @@ tfoot td { font-weight: 700; background: var(--paper); }
   .lightbox .button { width: auto; }
   .pin-label { font-size: 22px; }
   .running { align-items: flex-start; }
-  .pixels { width: 62vw; opacity: 0.7; }
+  .pixels { width: 132px; top: auto; bottom: 20px; transform: none; opacity: 0.28; }
 }
 
 .lead-muted { font-size: clamp(1.1rem, 1.8vw, 1.35rem); color: rgba(255, 255, 255, 0.86); max-width: 52ch; }
+
+/* ---------- action rows: before a storm / this year ---------- */
+.now { list-style: none; padding: 0; margin: 0; display: grid; }
+.now-card {
+  display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; align-items: center;
+  border: 1px solid var(--line); padding: 16px; margin-top: -1px; background: var(--white);
+}
+.now-card img { width: 180px; height: 130px; object-fit: cover; background: var(--paper); }
+.now-card div { display: grid; gap: 6px; }
+.now-title { font: 600 1.35rem/1.25 var(--head); letter-spacing: -0.01em; }
+.now-title .tag { vertical-align: middle; margin-left: 8px; }
+.now-card .why { color: var(--muted); font-size: 0.95rem; }
+.later-list .now-card img { object-position: center; }
+@media (max-width: 640px) {
+  .now-card { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding: 12px; align-items: start; }
+  .now-card img { width: 96px; height: 80px; }
+  .now-title { font-size: 1.1rem; }
+  .now-title .tag { margin: 6px 0 0; display: inline-flex; }
+}
+
+/* ---------- details: camera strip and frames sheet ---------- */
+.camstrip { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 14px; scrollbar-width: thin; }
+.camstrip figure { margin: 0; flex: none; display: grid; gap: 10px; }
+.camstrip button { padding: 0; border: 1px solid var(--line); background: #111; cursor: zoom-in; display: block; }
+.camstrip img { height: clamp(320px, 52vw, 560px); width: auto; max-width: none; display: block; }
+.camstrip figcaption { font: 500 0.85rem/1 var(--mono); color: var(--muted); letter-spacing: 0.04em; }
+.taglegend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.tag.privacy { background: var(--blue-2); }
+.sheet { margin: 22px 0 12px; border: 1px solid var(--line); background: var(--white); overflow-x: auto; }
+.sheet img { width: 100%; min-width: 640px; height: auto; display: block; }
+.funnel .label { color: var(--muted); }

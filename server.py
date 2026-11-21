@@ -211,7 +211,8 @@ def keyframe(job_id: str, n: int, boxes: int = 1):
         raise HTTPException(404, "No such frame.")
     img = imgs[n]
     if boxes:
-        img = render.with_boxes(img, [f for f in job.result["findings"] if f["frame"] == n])
+        img = render.with_boxes(img, [f for f in job.result["findings"] if f["frame"] == n],
+                                [p for p in job.result.get("people", []) if p["frame"] == n])
     return _jpeg(render.encode(img))
 
 
@@ -231,6 +232,14 @@ def thumb(job_id: str, i: int):
     if not 0 <= i < len(thumbs):
         raise HTTPException(404, "No such frame.")
     return _jpeg(thumbs[i])
+
+
+@app.get("/api/jobs/{job_id}/filmstrip.jpg")
+def filmstrip(job_id: str):
+    job = _done(job_id)
+    if "filmstrip" not in job.images:     # drawn once, then kept with the job
+        job.images["filmstrip"] = render.filmstrip(job.result["samples"], job.images["thumbs"])
+    return _jpeg(job.images["filmstrip"])
 
 
 @app.get("/api/jobs/{job_id}/video")

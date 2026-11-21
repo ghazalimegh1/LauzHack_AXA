@@ -4,12 +4,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import CheckForm, { Running } from "../components/CheckForm";
-import { HazardChips, WeakCards, counted } from "../components/Result";
+import { HazardChips, LaterList, NowList, counted } from "../components/Result";
 import { Footer, Hero } from "../components/Shell";
 import SpatialView from "../components/SpatialView";
 import Storm from "../components/Storm";
 import { follow, getLatest, img, startCheck } from "../lib/api";
-import { lower } from "../lib/format";
 
 function Start({ onSubmit, error }) {
   return (
@@ -32,7 +31,7 @@ function Start({ onSubmit, error }) {
 function Result({ job, onAgain }) {
   const r = job.result;
   const todo = counted(r).slice(0, 5);
-  const unsure = (r.weak_points || []).filter((w) => w.status === "uncertain");
+  const unsure = r.uncertain_count || 0;
   const aiFailed = r.ai && r.ai.status === "failed";
 
   return (
@@ -42,9 +41,18 @@ function Result({ job, onAgain }) {
         <HazardChips hazards={r.hazards} />
       </Hero>
 
+      <section className="band paper tight" aria-labelledby="video-title">
+        <div className="inner">
+          <div className="section-head">
+            <h2 id="video-title">Your video</h2>
+          </div>
+          <video className="player" src={`${img.video(job.id)}#t=0.1`} controls playsInline preload="metadata" />
+        </div>
+      </section>
+
       <section className="band" aria-labelledby="where-title">
         <div className="inner">
-          {todo.length + unsure.length > 0 && r.action.key !== "unknown" ? (
+          {todo.length > 0 && r.action.key !== "unknown" ? (
             <>
               <div className="section-head">
                 <h2 id="where-title">Where your site is exposed</h2>
@@ -74,7 +82,7 @@ function Result({ job, onAgain }) {
               <h2 id="now-title">Do this before a storm</h2>
               <p>The most important first. Each step takes minutes, not days.</p>
             </div>
-            <WeakCards points={todo} jobId={job.id} field="now" />
+            <NowList points={todo} jobId={job.id} />
           </div>
         </section>
       )}
@@ -88,22 +96,16 @@ function Result({ job, onAgain }) {
               <h2 id="year-title">Fix this year</h2>
               <p>Lasting improvements that keep the next storm from causing damage.</p>
             </div>
-            <WeakCards points={todo} jobId={job.id} field="later" />
+            <LaterList points={todo} jobId={job.id} />
           </div>
         </section>
       )}
 
-      <section className="band paper" aria-labelledby="video-title">
-        <div className="inner">
-          <div className="section-head">
-            <h2 id="video-title">Your video</h2>
-          </div>
-          <video className="player" src={`${img.video(job.id)}#t=0.1`} controls playsInline preload="metadata" />
-          <div style={{ display: "grid", gap: 14, marginTop: 24 }}>
-            {unsure.length > 0 && (
-              <p className="quiet">
-                We could not tell for sure about: {unsure.map((w) => lower(w.name)).join(", ")}. An expert should take a look.
-              </p>
+      {(unsure > 0 || aiFailed) && (
+        <section className="band tight">
+          <div className="inner" style={{ display: "grid", gap: 14 }}>
+            {unsure > 0 && (
+              <p className="quiet">Some things in your video were unclear. An expert should take a look.</p>
             )}
             {aiFailed && (
               <p className="note">
@@ -112,9 +114,12 @@ function Result({ job, onAgain }) {
               </p>
             )}
           </div>
-          <div className="actions" style={{ marginTop: 32 }}>
-            <button className="button" type="button" onClick={onAgain}>Check another site</button>
-          </div>
+        </section>
+      )}
+
+      <section className="band tight paper">
+        <div className="inner actions">
+          <button className="button" type="button" onClick={onAgain}>Check another site</button>
         </div>
       </section>
     </>

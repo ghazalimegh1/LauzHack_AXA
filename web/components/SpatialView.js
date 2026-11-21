@@ -55,8 +55,9 @@ function placePins(points, duration) {
   return placed;
 }
 
+// Uncertain finds never reach this view: the backend leaves them out.
 function colourOf(p) {
-  return p.status === "uncertain" ? RISK.uncertain : RISK[p.label] || RISK.none;
+  return RISK[p.label] || RISK.none;
 }
 
 export default function SpatialView({ result, jobId }) {
@@ -153,7 +154,6 @@ export default function SpatialView({ result, jobId }) {
             {/* pins */}
             {pins.map((p, i) => {
               const c = colourOf(p);
-              const unsure = p.status === "uncertain";
               const right = p.x < 600;
               return (
                 <g
@@ -163,16 +163,15 @@ export default function SpatialView({ result, jobId }) {
                   tabIndex={0}
                   role="button"
                   aria-pressed={i === sel}
-                  aria-label={`${p.n}: ${lower(p.name)}, ${unsure ? "uncertain" : `${p.label} risk`}`}
+                  aria-label={`${p.n}: ${lower(p.name)}, ${p.label} risk`}
                   onClick={() => select(i, false)}
                   onKeyDown={(e) => onKey(e, i)}
                 >
                   <circle className="ring" cx={p.x} cy={p.y} r="25" fill="none" stroke="#00008F" strokeWidth="3" />
                   <g className="dot">
-                    <circle cx={p.x} cy={p.y} r="17" fill={unsure ? "#FFFFFF" : c} stroke={unsure ? c : "#FFFFFF"}
-                      strokeWidth="2.5" strokeDasharray={unsure ? "4 3" : undefined} />
+                    <circle cx={p.x} cy={p.y} r="17" fill={c} stroke="#FFFFFF" strokeWidth="2.5" />
                     <text x={p.x} y={p.y + 5} textAnchor="middle" fontFamily="var(--head)" fontWeight="700"
-                      fontSize="15" fill={unsure ? c : p.label === "low" ? "#212529" : "#FFFFFF"}>{p.n}</text>
+                      fontSize="15" fill={p.label === "low" ? "#212529" : "#FFFFFF"}>{p.n}</text>
                   </g>
                   <text className="pin-label" x={right ? p.x + 24 : p.x - 24} y={p.y + 5} textAnchor={right ? "start" : "end"}>
                     {lower(p.name)}
@@ -185,9 +184,6 @@ export default function SpatialView({ result, jobId }) {
             <span><i style={{ background: RISK.high }} />high</span>
             <span><i style={{ background: RISK.medium }} />medium</span>
             <span><i style={{ background: RISK.low }} />low</span>
-            {pins.some((p) => p.status === "uncertain") && (
-              <span><i style={{ border: `1.5px dashed ${RISK.uncertain}` }} />uncertain</span>
-            )}
             <span><i style={{ background: "#6E72E3" }} />hail: {hazardWord(hazards.hail).word}</span>
             <span><i className="sq" style={{ background: "rgba(59,63,216,.3)" }} />water: {hazardWord(hazards.water).word}</span>
           </div>
@@ -195,7 +191,7 @@ export default function SpatialView({ result, jobId }) {
         <div className="pinrow" role="group" aria-label="Weak points">
           {pins.map((p, i) => (
             <button key={p.kind} type="button" className="pinbtn" aria-pressed={i === sel} onClick={() => select(i, false)}>
-              <b style={{ background: p.status === "uncertain" ? RISK.uncertain : colourOf(p), color: p.label === "low" && p.status !== "uncertain" ? "#212529" : "#fff" }}>{p.n}</b>
+              <b style={{ background: colourOf(p), color: p.label === "low" ? "#212529" : "#fff" }}>{p.n}</b>
               {lower(p.name)}
             </button>
           ))}
@@ -212,9 +208,7 @@ export default function SpatialView({ result, jobId }) {
           </div>
         )}
         <div className="body">
-          <span className={`tag ${current.status === "uncertain" ? "uncertain" : current.label}`}>
-            {current.status === "uncertain" ? "uncertain" : `${current.label} risk`}
-          </span>
+          <span className={`tag ${current.label}`}>{current.label} risk</span>
           <h3>{current.n}. {current.name}{current.count > 1 ? ` (${current.count}×)` : ""}</h3>
           <dl>
             <dt>Hazard</dt>
