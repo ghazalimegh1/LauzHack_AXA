@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import CheckForm, { Running } from "../../components/CheckForm";
 import { HazardChips } from "../../components/Result";
 import { Footer, Hero } from "../../components/Shell";
+import Story from "../../components/Story";
 import { follow, getInfo, getLatest, img, startCheck } from "../../lib/api";
 import { RISK, clock, ms, pct, tokens, usd } from "../../lib/format";
 
@@ -229,6 +230,10 @@ function FreePart({ r }) {
     [r.people_blurred, r.people_blurred === 1 ? "person blurred" : "people blurred"],
     [vehicles, vehicleText],
   ];
+  // Older results have no merge count; only show it when the check reported one.
+  if (r.duplicates_removed != null) {
+    steps.push([r.duplicates_removed, r.duplicates_removed === 1 ? "repeated find merged" : "repeated finds merged"]);
+  }
   return (
     <Part title="2 · Free steps first"
       intro="All of this runs on this computer with no AI and no cost.">
@@ -419,6 +424,7 @@ function Frugal({ job }) {
 export default function DetailsPage() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [story, setStory] = useState(false);
   const [running, setRunning] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
@@ -463,7 +469,9 @@ export default function DetailsPage() {
 
   return (
     <main>
-      <Hero title="How the check works" toplink={<a className="toplink" href="/">← Customer view</a>}>
+      {story && <Story onClose={() => setStory(false)} />}
+      <Hero title="How the check works" toplink={<a className="toplink" href="/">← Customer view</a>}
+        onLogo={() => setStory(true)}>
         <p className="lead reveal">
           Free code does most of the work: the official hazard maps, picking sharp key frames, finding
           cars and blurring people on this computer. Paid AI only looks where the map says it matters.

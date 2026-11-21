@@ -291,6 +291,12 @@ tfoot td { font-weight: 700; background: var(--paper); }
   border: 1px solid var(--line); padding: 16px; margin-top: -1px; background: var(--white);
 }
 .now-card img { width: 180px; height: 130px; object-fit: cover; background: var(--paper); }
+/* same footprint as a photo, so rows stay aligned when no clear close-up exists */
+.now-card .nophoto {
+  width: 180px; height: 130px; background: var(--paper); border: 1px dashed var(--line);
+  place-items: center; text-align: center; padding: 8px;
+  font: 500 0.72rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
 .now-card div { display: grid; gap: 6px; }
 .now-title { font: 600 1.35rem/1.25 var(--head); letter-spacing: -0.01em; }
 .now-title .tag { vertical-align: middle; margin-left: 8px; }
@@ -298,7 +304,7 @@ tfoot td { font-weight: 700; background: var(--paper); }
 .later-list .now-card img { object-position: center; }
 @media (max-width: 640px) {
   .now-card { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding: 12px; align-items: start; }
-  .now-card img { width: 96px; height: 80px; }
+  .now-card img, .now-card .nophoto { width: 96px; height: 80px; }
   .now-title { font-size: 1.1rem; }
   .now-title .tag { margin: 6px 0 0; display: inline-flex; }
 }
@@ -328,3 +334,95 @@ tfoot td { font-weight: 700; background: var(--paper); }
 .frugal-details summary h3::before { content: "▸ "; color: var(--muted); }
 .frugal-details[open] summary h3::before { content: "▾ "; }
 .frugal-details[open] summary { margin-bottom: 12px; }
+
+/* ---------- AXA logo story (jury page): big type, readable on a projector ---------- */
+.logo-button { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.logo-button:hover img { transform: scale(1.04); }
+.logo-button img { transition: transform 0.2s var(--ease); }
+.story {
+  position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 143, 0.92);
+  display: grid; place-items: center; padding: clamp(10px, 2.5vw, 28px); cursor: pointer;
+}
+.story-box {
+  position: relative; width: min(1400px, 100%); max-height: 100%; overflow-y: auto;
+  background: var(--white); color: var(--ink); outline: none;
+  padding: clamp(28px, 4vw, 64px) clamp(20px, 4vw, 64px) clamp(44px, 5vw, 72px);
+}
+.story-close {
+  position: absolute; top: 8px; right: 12px; border: 0; background: none; cursor: pointer;
+  font: 400 2.4rem/1 var(--head); color: var(--muted); padding: 6px 10px;
+}
+.story-close:hover { color: var(--blue); }
+.story-part { display: grid; gap: clamp(18px, 3vw, 36px); animation: rise 0.5s var(--ease) both; }
+.story-part h2 { font-size: clamp(2rem, 4.6vw, 4rem); line-height: 1.04; color: var(--blue); }
+.story-two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(28px, 5vw, 72px); align-items: start; }
+.story-block { display: grid; gap: clamp(14px, 2vw, 24px); }
+.story-source { font: 400 0.8rem/1.4 var(--text); color: var(--muted); }
+.story-dots { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+.story-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.story-dots i.on { background: var(--blue); }
+
+.story-chart { width: 100%; height: auto; }
+.sc-bar { fill: var(--blue); }
+.sc-value { font: 700 30px var(--head); fill: var(--ink); }
+.sc-year { font: 500 22px var(--mono); fill: var(--muted); }
+.sc-unit { font: 500 15px var(--mono); fill: var(--muted); letter-spacing: 0.04em; }
+.sc-axis { stroke: var(--ink); stroke-width: 2; }
+.sc-avg { stroke: var(--medium); stroke-width: 3; stroke-dasharray: 10 8; }
+.sc-avg-label { font: 700 19px var(--head); fill: var(--medium); }
+
+.share { display: grid; gap: 14px; }
+.share-title { font: 500 1rem/1.3 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.share-bar { display: flex; height: clamp(110px, 14vw, 170px); }
+.share-cars {
+  flex: 0 0 80%; background: var(--blue); color: var(--white); display: flex; align-items: center;
+  gap: clamp(10px, 1.5vw, 20px); padding: 0 clamp(12px, 2vw, 28px); font-family: var(--head);
+}
+.share-cars b { font-size: clamp(1.4rem, 3vw, 2.6rem); line-height: 1; }
+.share-car { width: clamp(52px, 7vw, 96px); fill: var(--white); flex: none; }
+.share-rest {
+  flex: 1 1 auto; background: var(--line); color: var(--ink); display: grid; place-items: center;
+  font: 600 clamp(1rem, 1.6vw, 1.4rem) var(--head);
+}
+.share-note { color: var(--muted); font-size: 0.95rem; }
+.share-big { font: 700 clamp(1.8rem, 3.6vw, 3rem)/1.05 var(--head); color: var(--ink); }
+
+.story-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 3vw, 40px); }
+.story-three figure { margin: 0; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.story-three figcaption { font: 700 clamp(1.3rem, 2.4vw, 2rem)/1.15 var(--head); }
+.drawing { width: 100%; max-width: 320px; height: auto; }
+.story-last { font: 700 clamp(2.2rem, 5.4vw, 4.6rem)/1.02 var(--head); color: var(--blue); letter-spacing: -0.02em; }
+.story-cost { font: 500 clamp(0.95rem, 1.5vw, 1.25rem)/1.4 var(--mono); color: var(--muted); }
+
+/* crayon drawings: thick round strokes in the site colours */
+.cr { stroke-linecap: round; stroke-linejoin: round; stroke-width: 4.5; fill: none; }
+.cr-car { fill: var(--blue-2); stroke: var(--blue); }
+.cr-window { fill: var(--white); stroke: var(--blue); stroke-width: 3; }
+.cr-wheel { fill: var(--ink); stroke: var(--ink); }
+.cr-face { stroke: var(--ink); stroke-width: 4; }
+.cr-cloud { fill: var(--line); stroke: var(--muted); }
+.cr-eye { fill: var(--ink); stroke: none; }
+.cr-hail { fill: var(--white); stroke: var(--blue-2); stroke-width: 3.5; }
+.cr-ground { stroke: var(--teal); stroke-width: 5; }
+.cr-phone { fill: var(--ink); stroke: var(--ink); }
+.cr-screen { fill: var(--paper); stroke: var(--muted); stroke-width: 2.5; }
+.cr-rec { fill: var(--high); stroke: none; }
+.cr-beam { stroke: var(--low); stroke-width: 3.5; stroke-dasharray: 2 10; }
+.cr-screenbox { fill: var(--teal); stroke: var(--ink); }
+.cr-bigeye { fill: var(--white); stroke: var(--ink); stroke-width: 3; }
+.cr-pupil { fill: var(--blue); stroke: none; }
+.cr-stand { stroke: var(--ink); }
+.cr-sun { fill: var(--low); stroke: var(--medium); }
+.cr-ray { stroke: var(--medium); }
+.cr-roof { fill: var(--teal); stroke: var(--ink); }
+.cr-post { stroke: var(--ink); stroke-width: 6; }
+.cr-pig { fill: var(--medium); stroke: var(--ink); stroke-width: 3.5; }
+.cr-pigleg { stroke: var(--ink); stroke-width: 4; }
+.cr-slot { stroke: var(--ink); stroke-width: 4; }
+.cr-coin { fill: var(--low); stroke: var(--ink); stroke-width: 3; }
+.drawing .cr-face { fill: none; }
+
+@media (max-width: 760px) {
+  .story-two, .story-three { grid-template-columns: minmax(0, 1fr); }
+  .drawing { max-width: 220px; }
+}

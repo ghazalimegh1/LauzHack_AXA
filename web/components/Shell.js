@@ -1,9 +1,15 @@
 // Page frame: the AXA logo at the top right, the blue hero with its pixel blocks, the footer.
 
-export function Logo() {
+// With onOpen (jury page) the logo is a button that opens the story; otherwise just the logo.
+export function Logo({ onOpen }) {
+  const picture = <img src="/axa-logo.png" alt="AXA" width="146" height="194" />;
   return (
     <div className="logo">
-      <img src="/axa-logo.png" alt="AXA" width="146" height="194" />
+      {onOpen ? (
+        <button className="logo-button" type="button" onClick={onOpen} aria-label="AXA: open the story">
+          {picture}
+        </button>
+      ) : picture}
     </div>
   );
 }
@@ -28,11 +34,11 @@ export function Pixels() {
   );
 }
 
-export function Hero({ title, children, toplink }) {
+export function Hero({ title, children, toplink, onLogo }) {
   return (
     <header className="hero band">
       {toplink}
-      <Logo />
+      <Logo onOpen={onLogo} />
       <div className="inner">
         <h1 className="reveal">{title}</h1>
         {children}
