@@ -39,7 +39,7 @@ def test_picks_the_sharpest_frame_of_each_part():
     assert [s.index for s in picked] == sharpest
     for part in range(3):
         group = samples[part * 4: part * 4 + 4]
-        best = max((s for s in group if s.reason in ("", "a sharper frame was picked nearby")),
+        best = max((s for s in group if s.reason in ("", "sharper one picked")),
                    key=lambda s: s.sharpness)
         assert best.status == "picked"
 
@@ -77,7 +77,7 @@ def test_same_view_is_not_picked_twice():
     samples = [sample(0, 0, base), sample(1, 1, shifted), sample(2, 2, scene(8)), sample(3, 3, scene(9))]
     picked = frames.pick(samples, 3)                 # parts: [0], [1], [2, 3]
     assert {s.index for s in picked} == {0, 2, 3}
-    assert any(s.reason == "same view as a picked frame" for s in samples)
+    assert any(s.reason == "same view as a pick" for s in samples)
 
 
 def test_read_samples_keeps_two_frames_per_second(tmp_path):

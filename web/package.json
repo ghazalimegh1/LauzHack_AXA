@@ -1,5 +1,5 @@
 {
-  "name": "site-check-web",
+  "name": "frugal-site-check-web",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",

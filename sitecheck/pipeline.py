@@ -74,8 +74,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                              "brightened": brightened, "width": img.shape[1],
                              "height": img.shape[0], "people": 0})
         row["note"] = f"{len(samples)} sampled, {len(picked)} picked"
-    usable = sum(1 for s in samples if s.reason in ("", "same view as a picked frame",
-                                                    "a sharper frame was picked nearby"))
+    usable = sum(1 for s in samples if s.reason in ("", "same view as a pick", "sharper one picked"))
 
     # 3) free detector: vehicles + people, blur people (free)
     progress("Blurring people and finding vehicles on this computer")
@@ -96,7 +95,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                                              "confidence": d["confidence"],
                                              "source": "local detector", "model": "YOLO11n",
                                              "detail": d["label"]})
-            row["note"] = f"{people_total} people blurred"
+            row["note"] = f"{people_total} {'person' if people_total == 1 else 'people'} blurred"
         except privacy.DetectorMissing:
             detector_ok = False
             row["note"] = "detector file missing: no frames are sent to the AI"

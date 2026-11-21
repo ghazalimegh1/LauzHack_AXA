@@ -1,10 +1,7 @@
-import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";   // ".js" is required in an .mjs file
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
-// Two ways to run the website:
-// - Normal / demo: `npm run build` writes plain HTML, CSS and JS to web/out/, and the
-//   FastAPI server (server.py) hands those files out. One program, one port (8000).
-// - Editing the design: `npm run dev` (port 3000) reloads on every save; it forwards
-//   /api/... to the FastAPI server on port 8000, which must be running too.
+// `npm run build` writes plain files to web/out, which the Python server (port 8000) serves.
+// `npm run dev` (port 3000) is only for editing the design: it forwards /api to port 8000.
 export default function config(phase) {
   if (phase === PHASE_DEVELOPMENT_SERVER) {
     return {
@@ -16,8 +13,5 @@ export default function config(phase) {
       },
     };
   }
-  return {
-    output: "export",                    // plain files, no Node server needed at demo time
-    eslint: { ignoreDuringBuilds: true }, // no linter installed: keep the build quiet and fast
-  };
+  return { output: "export", images: { unoptimized: true }, eslint: { ignoreDuringBuilds: true } };
 }

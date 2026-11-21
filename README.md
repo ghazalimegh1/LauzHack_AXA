@@ -1,130 +1,102 @@
 # Frugal Site Check
 
-## What it does
+LauzHack 2026 · AXA challenge "Frugal use of Multimodal AI".
 
-Frugal Site Check helps a business owner prepare a property for hail and flooding.
+A business owner films a short walk around their site and enters the address. The app
+tells them what a storm would hit first, and what to do about it. Free code does most of
+the work. Paid AI only looks where the official hazard map says it matters, and costs
+about a tenth of a US cent per check.
 
-The user enters an address and films about one minute while walking around the site.
-The app returns:
+## Start it
 
-- the main hail and water risks at that address;
-- the parts of the property that need attention;
-- a short list of things to do before the next storm;
-- improvements to plan for this year;
-- photos and boxes showing the evidence behind each recommendation.
+You need Python 3.9 with the `.venv` folder, Node.js, and an OpenRouter key.
 
-The result is designed to be useful to a customer, an insurer, or someone preparing a site visit.
+1. Put the key in a file called `.env` in this folder (copy `.env.example`):
+   `OPENROUTER_API_KEY=...`. `.env` is ignored by git and is never committed.
+2. Build the website once (and again after every design change):
 
-## Why it is frugal
+   ```bash
+   cd web && npm install && npm run build && cd ..
+   ```
 
-The app does not send an entire video for processing.
+3. Start the server:
 
-1. The address is checked against official Swiss hazard maps.
-2. Local video processing removes dark, blurry, and repeated frames.
-3. People are blurred before images leave the computer.
-4. Only a few useful frames are selected.
-5. The map determines which weaknesses matter at that location.
-6. A second review is requested only when an important finding is unclear.
-7. Clear rules turn the findings into recommendations and a site score.
+   ```bash
+   .venv/bin/python -m uvicorn server:app --port 8000
+   ```
 
-This keeps the result explainable, reduces upload size, and records the real processing cost.
-Repeated checks are served from the cache.
+4. Open http://localhost:8000.
 
-## Run the website
+First time only: `.venv/bin/pip install -r requirements.txt`. The free detector needs
+`models/yolo11n.pt` (5 MB, not in git); ultralytics downloads it if it is missing:
+`.venv/bin/python -c "from ultralytics import YOLO; YOLO('models/yolo11n.pt')"`.
 
-Requirements:
+If `npm run build` or the tests sit at 0% CPU for minutes (seen on this Mac inside sandboxed
+tools), stop them and run them again from a normal terminal.
 
-- Python 3.10 or newer
-- Node.js 18.18 or newer
-- FFmpeg for video decoding
+Tests (no internet, no AI cost):
 
-Install the dependencies:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-cd web
-npm install
-npm run build
-cd ..
+```bash
+.venv/bin/python -m pytest -q
 ```
 
-Copy `.env.example` to `.env` and put your OpenRouter key after the `=`:
+## The two pages
 
-```text
-OPENROUTER_API_KEY=your_key_here
-```
+- **`/` Customer app.** Address + video, then "Check my site". The result shows the action
+  in plain words, the hail and water risk at the address, a 2.5D spatial view with one pin
+  per weak point, "Do this before a storm" cards, a live countdown to the next storm, "Fix
+  this year" cards and the video. No costs, models or tables.
+- **`/demo.html` Assessment details** (for the jury). The same check, opened up: key frames
+  with boxes, the filmstrip of every sampled frame and why it was picked or skipped, cost
+  per step, the comparison with bigger designs, how the map decided what to look for, and
+  the confidence of every object. Its upload form has settings (key frames, detector,
+  simulated hazard levels).
 
-Never commit `.env`. It is already ignored by Git.
+Both pages show the newest finished check.
 
-Start the website:
+## How a check works
 
-```powershell
-uvicorn server:app --port 8000
-```
+| Step | What | Cost |
+| --- | --- | --- |
+| 1 | Address -> coordinates (geo.admin.ch), then the official hail and surface-water/flood maps at that point (geo.admin.ch WMS). Level 0-2 per hazard. If the map does not answer: "map unavailable", never "low". | free |
+| 2 | Key frames: 2 frames per second, drop dark / overexposed / blurry ones (compared with the video's own median, lamps masked), sharpest frame of each part of the walk, no repeated views, brighten dim ones. Default 6. | free |
+| 3 | YOLO11n on this computer finds vehicles and people. People are blurred before any image leaves the computer. | free |
+| 4 | The map decides what the AI looks for: only object types whose hazard is at least level 1. Vehicles are left to the free detector. | free |
+| 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. | paid |
+| 6 | Strong model `google/gemini-2.5-flash`: only frames the cheap model was unsure about, 768 px. | paid |
+| 7 | Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Low confidence = "uncertain" (shown, not counted). Action: on-site prevention check / targeted tips / no action. | free |
 
-Open [http://localhost:8000/](http://localhost:8000/).
+Busy or broken model answers are retried after 2 s and 5 s, then sent to a fallback
+(flash-lite -> gemini-3.1-flash-lite -> gemini-2.5-flash). Answers are cached, so running
+the same check again costs nothing. The storm countdown uses the free Open-Meteo forecast.
 
-The main page is for a property owner. The **Assessment details** page shows the selected frames,
-the map reasoning, the evidence, the usage, and the limitations.
+## Measured cost (2026-11-21, address "Route Cantonale 11, 1015 Lausanne")
 
-For frontend development, run this from `web/`:
+The map gives hail level 1 (3.5 cm hailstones, 50-year) and water level 0 there, so the
+AI only looks for skylights, solar panels, blinds and goods/machines.
 
-```powershell
-npm run dev
-```
+| Video | Key frames | AI calls | Cost (billed by OpenRouter) | Found |
+| --- | --- | --- | --- | --- |
+| `IMG_2408.MOV` (night walk, 24 s) | 6 | 2 | $0.0013 | 1 parked car (high), external blinds in 2 frames (medium), goods or machines outside in 1 frame (medium) -> "Propose an on-site prevention check" |
+| `IMG_1420.MOV` (47 s, indoor room, camera hardly moves) | 2 (all other frames show the same view) | 1-2 | $0.00036 (Flash-Lite + Flash); $0.00064 in a second run where Flash-Lite was busy and the fallback gemini-3.1-flash-lite answered | nothing -> "No action needed" |
 
-Then open [http://localhost:3000/](http://localhost:3000/). The API still runs on port 8000.
+Same estimate rule for all three designs (night video): ours $0.0015, the same frames on
+Gemini 2.5 Pro $0.0061 (about 4×), a naive 1 HD frame per second on Gemini 2.5 Pro $0.068
+(about 46×).
 
-## Project structure
+## Files
 
-- `server.py` — web server and upload API.
-- `web/` — the customer website.
-- `frugal/geo.py` — address lookup and Swiss hazard maps.
-- `frugal/video.py` — frame selection and filmstrip creation.
-- `frugal/detect.py` — local object detection and people blurring.
-- `frugal/objects.py` — the catalogue of property weaknesses and advice.
-- `frugal/sitecheck.py` — the full inspection workflow.
-- `frugal/score.py` — deterministic scoring and recommendations.
-- `frugal/ledger.py` — processing usage and cost tracking.
-- `tests/` — offline tests.
+- `server.py`: the web server (API + both pages, one port).
+- `sitecheck/`: the analysis. `settings.py` (models, prices, thresholds), `catalogue.py`
+  (what we look for, weights, advice), `hazard_map.py`, `frames.py`, `privacy.py`,
+  `ai.py` (OpenRouter, retry, fallback, cache, estimate), `vision.py` (prompt),
+  `rules.py`, `forecast.py`, `pipeline.py` (all steps + ledger), `render.py` (boxes, crops).
+- `web/`: the Next.js website (plain JavaScript and CSS), built to `web/out`.
+- `tests/`: offline tests.
 
-## Demo checklist
+## Limits
 
-1. Use a real address with a known hail or flood risk.
-2. Film in landscape at 1080p.
-3. Walk slowly and pause briefly at roofs, doors, windows, car parks, and basement openings.
-4. Run the check once before presenting so the repeat run is instant.
-5. Show one result, one evidence frame, and one recommendation rather than every screen.
-
-The storm-warning switch is a presentation aid and is labelled as simulated.
-
-## Current limitations
-
-- The inspection can only judge what the camera can see.
-- One walk-around video cannot prove the condition of a roof or anything behind a wall.
-- The local detector may not understand whether a vehicle is protected by a roof.
-- People are blurred, but number plates still need a separate privacy review.
-- The national flood maps are useful for triage but are not a replacement for detailed local maps.
-- The recommendations and weights are assumptions that AXA should tune with real inspection data.
-
-## The technical idea
-
-This is a multimodal web application: text from the address is combined with images extracted from
-the user's video. The system uses a small first pass and escalates only important uncertain findings.
-
-The current OpenRouter setup is:
-
-- `google/gemini-2.5-flash-lite` — first pass, all key frames in one call;
-- `google/gemini-2.5-flash` — only for frames the first pass was unsure about;
-- `google/gemini-2.5-pro` — never called; its price is the "send everything to the top model"
-  comparison on the details page.
-
-Qwen3-VL 8B with GPT-4o was also tried (iPhone night walk, same key frames): it found only what the
-free local detector had already found, for about 6x the cost, so Gemini stays the default.
-
-The website records which steps ran, what evidence was found, and how much processing was used.
-
-The goal is not to replace an expert. It is to make the first prevention check faster, clearer, and
-more consistent.
+- The spatial view places pins approximately (layer from the object type, left-to-right
+  from when it was seen). It summarises the video; it is not a survey.
+- Weights and the hail cut-offs (3 cm = level 1, 4 cm = level 2) are our team's assumptions.
+- Jobs live in memory: restarting the server forgets them, and at most 5 are kept.

@@ -163,7 +163,7 @@ def pick(samples: list, k: int) -> list:
             if s.status != "usable":
                 continue
             if any(_same_view(s, p) for p in picked):
-                s.reason = "same view as a picked frame"
+                s.reason = "same view as a pick"
                 continue
             s.status, s.reason = "picked", ""
             picked.append(s)
@@ -182,7 +182,7 @@ def pick(samples: list, k: int) -> list:
         picked.append(best)
     for s in samples:
         if s.status == "usable":
-            s.status, s.reason = "skipped", s.reason or "a sharper frame was picked nearby"
+            s.status, s.reason = "skipped", s.reason or "sharper one picked"
         elif s.status != "picked":
             s.status = "skipped"
     return sorted(picked, key=lambda x: x.t)
