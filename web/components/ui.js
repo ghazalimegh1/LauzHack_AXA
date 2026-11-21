@@ -27,12 +27,6 @@ export function Spinner({ children }) {
   );
 }
 
-// Shown only when no AI key is set, so nobody mistakes simulated answers for real ones.
-export function DemoBadge({ info }) {
-  if (!info || !info.mock) return null;
-  return <span className="badge">demo mode (no AI key)</span>;
-}
-
 // Small "■ STEP 1 · FREE" label above a heading (the square comes from the CSS).
 export function Eyebrow({ children }) {
   return <p className="eyebrow">{children}</p>;
