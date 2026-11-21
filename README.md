@@ -59,11 +59,11 @@ Both pages show the newest finished check.
 | --- | --- | --- |
 | 1 | Address -> coordinates (geo.admin.ch), then the official hail and surface-water/flood maps at that point (geo.admin.ch WMS). Level 0-2 per hazard. If the map does not answer: "map unavailable", never "low". | free |
 | 2 | Key frames (the team's earlier frame picker, ported): 2 frames per second; drop dark / overexposed / blurry ones, judged against the video's own median; "walking sharpness" clips street lamps and lets the weaker of the two edge directions count, because walking smears one direction; best frame of each equal part of the walk, unless a 32×18 miniature shows the same view as a frame already picked; brighten dim ones. Default 6. | free |
-| 3 | YOLO11n on this computer finds vehicles and people (the team's earlier detector code: confidence from 35%, a vehicle counts from 50%). People are blurred before any image leaves the computer. | free |
+| 3 | YOLO11n on this computer finds vehicles and people: one look at 960 px (the size of our frames; only car / truck / bus / motorcycle / person, one box per object), plus a second people-only look at 640 px. A person either look finds is blurred before any image leaves the computer. Confidence from 35%, a vehicle counts from 50%. | free |
 | 4 | The map decides what the AI looks for: only object types whose hazard is at least level 1. Vehicles are left to the free detector. | free |
-| 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. Prompt and answer reader are the team's earlier ones (compact JSON, boxes on a 0-1000 grid, cut-off answers still give their complete objects). | paid |
+| 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. The prompt asks for a tight box per object and one plain word for it ("pallets", "machine"); boxes are clamped to the picture and boxes under 3% of its width or height are dropped. Compact JSON, boxes on a 0-1000 grid, cut-off answers still give their complete objects. | paid |
 | 6 | Strong model `google/gemini-2.5-flash`: only frames the cheap model was unsure about, 768 px. | paid |
-| 7 | Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Finds below 60% confidence (50% for the detector) are left out everywhere; the customer page only says that an expert should take a look. Action: on-site prevention check / targeted tips / no action. | free |
+| 7 | Repeats are merged: the same kind of object with heavily overlapping boxes in one frame, or in a key frame up to 1.5 s later, counts once (the most confident box is kept unchanged). Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Finds below 60% confidence (50% for the detector) are left out everywhere; the customer page only says that an expert should take a look. A close-up that is too small or too blurred to recognise is not shown; the label is shown alone. Action: on-site prevention check / targeted tips / no action. | free |
 
 Busy or broken model answers are retried after 2 s and 5 s, then sent to a fallback
 (flash-lite -> gemini-3.1-flash-lite -> gemini-2.5-flash). Answers are cached, so running
@@ -72,16 +72,21 @@ billed. "Fresh run" on the details page (or `POST /api/analyze?nocache=1`) asks 
 The detector label shown everywhere comes from the weights file name
 (`settings.DETECTOR_LABEL`). The storm countdown uses the free Open-Meteo forecast.
 
-## Measured cost (2026-11-21, address "Route Cantonale 11, 1015 Lausanne")
+## Measured cost (2026-11-22, address "Route Cantonale 11, 1015 Lausanne", fresh AI answers)
 
 The map gives hail level 1 (3.5 cm hailstones, 50-year) and water level 0 there, so the
 AI only looks for skylights, solar panels, blinds and goods/machines.
 
-| Video | Key frames | AI calls | Cost (billed by OpenRouter) | Found |
-| --- | --- | --- | --- | --- |
-| `IMG_2406.MOV` (daytime walk, 41 s) | 6 (at 0, 9, 13.5, 23, 34, 34.5 s: the same picks as the earlier app) | 1 | $0.00032 (Flash-Lite only) | parked cars (high), skylight / glass roof and external blinds (medium), goods or machines outside at 23 s and 34 s (medium); 5 people blurred -> "Propose an on-site prevention check" |
-| `IMG_2408.MOV` (night walk, 24 s) | 6 | 2 | $0.0012 (Flash-Lite + Flash for 6 unclear frames) | 1 parked car (high), goods or machines outside at 0 s and 6.5 s (medium), external blinds (medium) -> "Propose an on-site prevention check" |
-| `IMG_1420.MOV` (47 s, indoor room, camera hardly moves) | 2 (all other frames show the same view) | 1-2 | $0.00036 (Flash-Lite + Flash); $0.00064 in a second run where Flash-Lite was busy and the fallback gemini-3.1-flash-lite answered | nothing -> "No action needed" |
+| Video | AI calls | Cost (billed by OpenRouter) | Found |
+| --- | --- | --- | --- |
+| `IMG_2406.MOV` (daytime walk, 41 s) | 1 (Flash-Lite) | $0.00022 | parked cars (high); glass canopy, external blinds (medium); pallets and a machine at 23 s and 34 s (medium); 4 people blurred |
+| `IMG_2408.MOV` (night walk, 24 s) | 2 (Flash-Lite, then Flash for 6 unclear frames) | $0.0012 | parked cars (high); equipment outside at 0 s and 6.5 s (medium) |
+| `IMG_1420.MOV` (47 s, indoor room) | 2 | $0.00069 | nothing -> "No action needed" |
+
+Before the computer-vision refinement (same day, same videos) the bills were $0.00031,
+$0.0012 and $0.00080. Billed cost can include OpenRouter's discount for repeated input, so
+the fair comparison is tokens: +38 prompt tokens per call (+2%), slightly shorter answers,
+about 2% cheaper overall.
 
 Same estimate rule for all three designs (night video): ours $0.0015, the same frames on
 Gemini 2.5 Pro $0.0061 (about 4×), a naive 1 HD frame per second on Gemini 2.5 Pro $0.068

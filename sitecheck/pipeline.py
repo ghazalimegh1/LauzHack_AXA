@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from contextlib import contextmanager
 
-from . import ai, catalogue, frames, hazard_map, privacy, rules, settings, vision
+from . import ai, catalogue, frames, hazard_map, merge, privacy, render, rules, settings, vision
 
 
 class Ledger:
@@ -134,7 +134,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                     meta = key_meta[o["frame"]]
                     findings.append({"frame": meta["index"], "t": meta["t"], "kind": o["kind"],
                                      "box": o["box"], "confidence": o["confidence"],
-                                     "source": "cheap model", "model": ans["model"], "detail": ""})
+                                     "source": "cheap model", "model": ans["model"],
+                                     "detail": o.get("detail", "")})
                     if o["confidence"] < settings.UNSURE_BELOW:
                         unsure_frames.add(o["frame"])
             except ai.AIError as exc:
@@ -164,7 +165,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                         findings.append({"frame": meta["index"], "t": meta["t"], "kind": o["kind"],
                                          "box": o["box"], "confidence": o["confidence"],
                                          "source": "strong model", "model": ans["model"],
-                                         "detail": ""})
+                                         "detail": o.get("detail", "")})
                 except ai.AIError as exc:
                     row["note"] = "no answer, first look kept: " + type(exc).__name__
                     ai_info["second_look_failed"] = True
@@ -172,6 +173,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
     # 7) rules (free)
     progress("Putting your results together")
     with ledger.step("Apply rules (importance = weight x hazard level)") as row:
+        # One object = one find: repeats in a frame or in the next key frame are dropped.
+        findings, repeats = merge.merge(findings)
         findings = [rules.score_finding(f, levels) for f in findings]
         # Uncertain finds are not shown anywhere (team decision): only counted here, so the
         # customer page can say that an expert should take a look.
@@ -183,9 +186,11 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
             f["name"] = catalogue.KINDS[f["kind"]]["name"]
             f["confidence"] = round(f["confidence"], 3)
             f["box"] = [round(v, 4) for v in f["box"]]
+            # A close-up only helps if it is recognisable; otherwise the page shows the label alone.
+            f["photo"] = render.photo_ok(key_imgs[f["frame"]], f["box"])
         points = rules.weak_points(findings, levels)
         action = rules.decide(points, hazards)
-        row["note"] = action["text"]
+        row["note"] = action["text"] + (f" · {repeats} repeated find(s) merged" if repeats else "")
 
     result = {
         "address": place,
@@ -206,6 +211,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "people_blurred": people_total,
         "people": people,
         "uncertain_count": len(unsure),
+        "duplicates_removed": repeats,
         "ai": ai_info,
         "ledger": ledger.rows,
         "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs), ai_info["status"]),

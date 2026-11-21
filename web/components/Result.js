@@ -36,11 +36,17 @@ export function NowList({ points, jobId }) {
     <ol className="now">
       {points.map((w, i) => (
         <li className="now-card reveal" key={w.kind} style={{ animationDelay: `${i * 60}ms` }}>
-          <img src={img.crop(jobId, w.best)} alt={`${w.name} in your video`} loading="lazy" />
+          {/* No clear close-up: show the label alone rather than a misleading picture. */}
+          {w.photo != null ? (
+            <img src={img.crop(jobId, w.photo)} alt={`${w.name} in your video`} loading="lazy" />
+          ) : (
+            <div className="nophoto"><span>No clear close-up</span></div>
+          )}
           <div>
             <p className="now-title">
               {w.name}{w.count > 1 ? ` (${w.count}×)` : ""} <span className={`tag ${w.label}`}>{w.label} risk</span>
             </p>
+            {w.details && w.details.length > 0 && <p className="quiet">Seen: {w.details.join(", ")}</p>}
             <p>{w.now}</p>
           </div>
         </li>

@@ -53,6 +53,11 @@ def weak_points(findings: list, levels: dict) -> list:
             "count": len(sure) if sure else len(items),
             "confidence": round(best["confidence"], 2),
             "best": best["id"], "frame": best["frame"], "t": best["t"],
+            # the clearest recognisable close-up (None: show the label without a picture)
+            "photo": next((f["id"] for f in sorted(pool, key=lambda f: -f["confidence"])
+                           if f.get("photo", True)), None),
+            # the plain names the AI used, e.g. "pallets, machine"
+            "details": sorted({f["detail"] for f in pool if f.get("detail")}),
             "seen_at": sorted({round(f["t"], 1) for f in pool}),
             "source": best["source"],
             "why": item["why"], "now": item["now"], "later": item["later"],

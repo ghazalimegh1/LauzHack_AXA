@@ -30,15 +30,19 @@ def prompt(kinds: list, n: int) -> str:
     lines = "\n".join(f"{k}: {catalogue.KINDS[k]['find']}" for k in kinds)
     # 'u' is only for frames that cannot be judged: a cheap model otherwise marks every
     # clear frame with no target object as unclear, which sends all frames to the strong model.
+    # 'd' names the object plainly (pallets, not "goods"), so people see what was found;
+    # one short word keeps the extra output tokens tiny.
     return (f"The {n} images above are frames 0-{n - 1} of a walk-around video of a business "
             "site, checked for hail and flood prevention. Find ONLY these object types:\n"
             f"{lines}\n"
-            "For each object give f = frame number, t = type, "
-            f"b = box {_BOX_TEXT} scaled 0-1000, c = confidence 0-1. "
+            "For each object give f = frame number, t = type, d = one plain word for it "
+            "(e.g. pallets, machine, van), "
+            f"b = tight box {_BOX_TEXT} scaled 0-1000 around that object only, "
+            "c = confidence 0-1. Skip objects too small or blurred to name. "
             "u = list of frames too dark, blurred or blocked to judge; a clear frame without "
             "these objects is not unclear. At most 5 objects per frame. "
             "Reply with JSON only, no other text, e.g. "
-            f'{{"o":[{{"f":0,"t":"glass_roof","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
+            f'{{"o":[{{"f":0,"t":"glass_roof","d":"skylight","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
 
 
 def parts_for(prompt_text: str, images: list) -> list:
@@ -108,6 +112,19 @@ def _to_fraction(box: list, size):
     return out if out[2] > out[0] and out[3] > out[1] else None
 
 
+MIN_BOX_SIDE = 0.03   # boxes narrower or lower than 3% of the picture show nothing useful
+
+
+def _big_enough(box: list) -> bool:
+    return box[2] - box[0] >= MIN_BOX_SIDE and box[3] - box[1] >= MIN_BOX_SIDE
+
+
+def _detail(value) -> str:
+    """The model's plain name for the object, kept short and to letters only (it is shown)."""
+    text = re.sub(r"[^a-z \-]", "", str(value or "").lower()).strip()
+    return " ".join(text.split()[:3])[:24]
+
+
 def _object(o, n: int, kinds: list, sizes):
     """One well-formed object, or None: a bad entry is dropped, never guessed."""
     if not isinstance(o, dict):
@@ -123,9 +140,10 @@ def _object(o, n: int, kinds: list, sizes):
         return None
     nums = _box_numbers(_pick(o, "b", "box", "bbox", "box_2d"))
     box = nums and _to_fraction(nums, sizes[f] if sizes else None)
-    if not box:
+    if not box or not _big_enough(box):
         return None
-    return {"frame": f, "kind": t, "box": box, "confidence": round(min(1.0, max(0.0, c)), 2)}
+    return {"frame": f, "kind": t, "box": box, "confidence": round(min(1.0, max(0.0, c)), 2),
+            "detail": _detail(_pick(o, "d", "detail", "what", "name"))}
 
 
 def read_answer(text: str, kinds: list, n: int, sizes=None) -> tuple:

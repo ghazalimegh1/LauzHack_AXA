@@ -155,3 +155,17 @@ def test_check_cost_counts_first_run_bill_for_reused_answers():
 
 def test_detector_label_comes_from_the_weights_file():
     assert settings.DETECTOR_LABEL == "YOLO" + settings.DETECTOR_WEIGHTS.stem[4:]
+
+
+def test_plain_name_is_kept_and_tiny_boxes_are_dropped():
+    text = ('{"o":[{"f":0,"t":"outdoor_goods","d":"Pallets!!","b":[100,100,400,500],"c":0.8},'
+            '{"f":0,"t":"outdoor_goods","d":"crate","b":[100,100,110,500],"c":0.8}]}')
+    objs, _ = vision.read_answer(text, ["outdoor_goods"], 1)
+    assert len(objs) == 1                                   # 1% high box: shows nothing, dropped
+    assert objs[0]["detail"] == "pallets"
+
+
+def test_boxes_outside_the_picture_are_clamped():
+    objs, _ = vision.read_answer('{"o":[{"f":0,"t":"glass_roof","b":[-50,900,600,1200],"c":0.9}]}',
+                                 ["glass_roof"], 1)
+    assert objs[0]["box"] == [0.9, 0.0, 1.0, 0.6]

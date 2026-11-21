@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
-from . import settings
+from . import frames, settings
 
 PRIVACY = "#3B3FD8"
 GREEN = "#1b9e4b"
@@ -67,7 +67,8 @@ def with_boxes(img: np.ndarray, findings: list, people: list = ()) -> np.ndarray
         x0, y0, x1, y1 = f["box"]
         c = colour_for(f)
         draw.rectangle([x0 * w, y0 * h, x1 * w, y1 * h], outline=c, width=thick)
-        tag = f"{f['id'] + 1} {f['name'].lower()} | {f['label'].upper()}"
+        # the model's plain name ("pallets") when it gave one, else our category name
+        tag = f"{f['id'] + 1} {(f.get('detail') or f['name']).lower()} | {f['label'].upper()}"
         _label_box(draw, (x0 * w, y0 * h), tag, c, size, w)
     return np.asarray(pil)[:, :, ::-1].copy()
 
@@ -82,6 +83,22 @@ def crop(img: np.ndarray, box: list, min_side: int = 220) -> np.ndarray:
     a, b = int(max(0, cx - side_w / 2)), int(max(0, cy - side_h / 2))
     c, d = int(min(w, cx + side_w / 2)), int(min(h, cy + side_h / 2))
     return img[b:d, a:c]
+
+
+# Measured on our test videos (2026-11-22): every close-up a person could recognise scored
+# 3.3 or more, the two night "blinds" close-ups that showed only smeared paving 0.9 and 1.6.
+PHOTO_MIN_SHARPNESS = 2.5
+PHOTO_MIN_PX = 32       # a box smaller than this (in the 960 px key frame) shows no detail
+
+
+def photo_ok(img: np.ndarray, box: list) -> bool:
+    """Whether the close-up of this box is worth showing. Never changes the box itself."""
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = int(box[0] * w), int(box[1] * h), int(box[2] * w), int(box[3] * h)
+    if min(x1 - x0, y1 - y0) < PHOTO_MIN_PX:
+        return False
+    gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
+    return frames.measure(gray)["sharpness"] >= PHOTO_MIN_SHARPNESS
 
 
 # --- Display-only clean-up -------------------------------------------------------------
