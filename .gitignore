@@ -1,19 +1,19 @@
+# secrets
 .env
+# local data and caches
 cache/
+models/
+eval/
+*.MOV
+*.mov
+*.mp4
+# python
+.venv/
 __pycache__/
 .pytest_cache/
-eval/*.jpg
-eval/*.jpeg
-eval/*.png
-.venv/
-models/
-eval/*.mp4
-eval/*.mov
-eval/frames*/
-eval/benchmark_video*/
-*.MOV
-.DS_Store
-node_modules/
+# web
+web/node_modules/
 web/.next/
 web/out/
 web/next-env.d.ts
+.DS_Store
