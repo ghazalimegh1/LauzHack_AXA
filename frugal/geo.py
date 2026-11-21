@@ -56,6 +56,15 @@ def geocode(address: str) -> dict:
     return {"label": label, "lat": lat, "lon": lon, "e": e, "n": n}
 
 
+def suggest(text: str, limit: int = 6) -> list[str]:
+    """Address suggestions while the customer types (same free federal search as geocode)."""
+    if len(text.strip()) < 3:
+        return []
+    data = _get(f"{API}/SearchServer", {"searchText": text, "type": "locations", "limit": limit})
+    labels = [re.sub(r"<[^>]+>", "", r["attrs"].get("label", "")) for r in data.get("results") or []]
+    return [label for label in dict.fromkeys(labels) if label]   # no duplicates, keep order
+
+
 def identify(e: float, n: float, layer_ids: list[str]) -> list[dict]:
     """Which features of these layers lie exactly on the point.
     UNUSED since 2026-11-21: this REST endpoint answers 400 "No GeoTable was found" for our

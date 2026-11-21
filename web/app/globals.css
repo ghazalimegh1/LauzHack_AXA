@@ -210,3 +210,108 @@ th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
 
 /* uploaded video playback (both pages) */
 .player { display: block; width: 100%; max-height: 520px; background: #000; border: 1px solid var(--line); margin-top: 16px; }
+
+/* =====================================================================================
+   Customer app (page "/", class .app): one phone-style column, the same on phone and laptop.
+   Bands (blue result band, grey cards, lines) still run full width; only the content sits in
+   a centred column of --col. The details page (/demo.html) keeps the wide layout above.
+   ===================================================================================== */
+.app { --col: 560px; --side: max(var(--gutter), calc((100% - var(--col)) / 2)); }
+.app > *:not(.fade), .app .fade > * { padding-left: var(--side); padding-right: var(--side); }
+.app h1 { font-size: 44px; }
+.app h2 { font-size: 28px; }
+.app .hero > *:not(.pixels) { max-width: 100%; }
+.app .pixels { opacity: 0.22; right: var(--side); top: 24px; }
+@media (min-width: 900px) {   /* room beside the column: the pixel blocks sit there in full colour */
+  .app .pixels { opacity: 1; right: auto; left: calc(50% + var(--col) / 2 + 48px); }
+}
+.app .block { margin-top: 32px; padding-top: 32px; }
+.app .foot { margin-top: 48px; }
+
+/* buttons */
+.button--ghost { background: var(--white); color: var(--blue); }
+.button--ghost:hover:not(:disabled) { color: var(--white); }
+.button--wide { width: 100%; justify-self: stretch; padding: 18px; font-size: 17px; }
+.app .link { margin-top: 18px; }
+
+/* start screen */
+.how { padding-top: 28px; }
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.how-steps li { display: flex; gap: 14px; align-items: center; font-size: 18px; }
+.how-steps b { flex: 0 0 36px; height: 36px; display: grid; place-items: center; background: var(--blue);
+               color: var(--white); font-family: var(--mono); font-weight: 500; }
+.app-card { background: var(--paper); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+            padding-top: 24px; padding-bottom: 24px; margin-top: 28px; display: grid; gap: 20px; }
+.address { position: relative; }
+.suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 5; list-style: none; margin: -1px 0 0;
+               padding: 0; background: var(--white); border: 1px solid var(--blue); max-height: 260px; overflow-y: auto; }
+.suggestions li { padding: 12px 14px; font-family: var(--font-body), sans-serif; font-size: 17px; text-transform: none;
+                  letter-spacing: 0; color: var(--ink); cursor: pointer; border-top: 1px solid var(--paper); }
+.suggestions li:hover { background: var(--paper); }
+.picker { display: grid; gap: 14px; text-align: center; background: var(--white); border: 1px solid var(--line);
+          padding: 20px; font-family: var(--font-body), sans-serif; text-transform: none; letter-spacing: 0;
+          color: var(--ink); font-size: 17px; }
+.picker--over { border-color: var(--blue); outline: 1px solid var(--blue); }
+.picker-hint { margin: 0; color: var(--muted); }
+.picker-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.picked { display: grid; gap: 8px; }
+.picked video { width: 100%; max-height: 320px; background: #000; display: block; }
+.picked-name { margin: 0; font-size: 16px; color: var(--muted); }
+.tips summary, .why summary { cursor: pointer; font-family: var(--mono); font-size: 13px; text-transform: uppercase;
+                              letter-spacing: 0.07em; color: var(--blue); }
+.tips ul { margin: 10px 0 0; padding-left: 20px; font-size: 17px; }
+.tips li { margin-bottom: 4px; }
+
+/* progress screen: real steps from the server, ticked as they finish */
+.progress-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.progress-steps li { display: flex; gap: 14px; align-items: center; font-size: 18px; }
+.tick { flex: 0 0 26px; height: 26px; display: grid; place-items: center; border: 2px solid var(--line);
+        color: var(--white); font-size: 15px; font-weight: 600; }
+.progress-steps .done .tick { background: var(--teal); border-color: var(--teal); }
+.progress-steps .now { font-weight: 600; }
+.progress-steps .now .tick { background: var(--blue); border-color: var(--blue); animation: blink 0.9s steps(2) infinite; }
+.progress-steps .next { color: var(--muted); }
+
+/* result: the plan */
+.notice { border-left: 6px solid #E8710A; }
+.notice p { margin: 0; }
+.score { display: grid; gap: 8px; margin: 4px 0 16px; }
+.score span:first-child { font-family: var(--mono); font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+                          color: var(--teal); }
+.score-bar { height: 10px; background: var(--paper); border: 1px solid var(--line); }
+.score-bar i { display: block; height: 100%; background: var(--teal); transition: width 0.3s ease-out; }
+.app .now-card { grid-template-columns: 112px 1fr; gap: 16px; align-items: start; padding: 14px; }
+.app .now-card img, .app .no-photo { width: 112px; height: 112px; }
+.app .now-title { font-size: 20px; }
+.now-text { display: grid; gap: 4px; }
+.now-card--done img, .now-card--done .now-text { opacity: 0.5; }
+.why p { color: var(--muted); font-size: 16px; margin: 6px 0 0 !important; }
+.tickbox { grid-column: 2; justify-self: start; display: inline-flex; gap: 10px; align-items: center; cursor: pointer;
+           font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--teal);
+           border: 1px solid var(--teal); background: var(--white); padding: 8px 12px; }
+.tickbox input { width: 22px; height: 22px; margin: 0; accent-color: var(--teal); }
+.now-card--done .tickbox { background: var(--teal); color: var(--white); }
+.app .forecast { grid-template-columns: 1fr; }
+.app .forecast-time { border-right: none; border-bottom: 1px solid var(--line); }
+.app .countdown { font-size: 52px; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 40px; }
+
+@media (max-width: 640px) {
+  .app h1 { font-size: 34px; }
+  .app h2 { font-size: 24px; }
+  .app .countdown { font-size: 44px; }
+}
+
+/* "Save as PDF" prints the plan: no buttons, video or blue background, colours of the tags kept. */
+@media print {
+  .no-print, .top, .pixels, video { display: none !important; }
+  body { font-size: 12pt; }
+  .page { padding: 0; }
+  .app > *:not(.fade), .app .fade > * { padding-left: 0; padding-right: 0; }
+  .hero { background: none; color: var(--ink); border-bottom: 3px solid var(--blue); padding: 0 0 16px; }
+  .hero p, .hero .eyebrow { color: var(--ink); }
+  .hero .chip { color: var(--blue); border-color: var(--blue); }
+  .now-card, .forecast { break-inside: avoid; }
+  .tag, .severity, .score-bar i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  details.why > p { display: block; }
+}

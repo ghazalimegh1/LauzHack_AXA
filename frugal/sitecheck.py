@@ -26,16 +26,20 @@ PROMPT_TOKENS = 350   # rough size of our instructions, for the estimate only
 
 def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
         levels: dict | None = None, k: int | None = None, use_detector: bool = True,
-        video_path: str | None = None, allow_map_fail: bool = False) -> dict:
+        video_path: str | None = None, allow_map_fail: bool = False, progress=None) -> dict:
     """Give either video_bytes or video_path. A path avoids holding a 300 MB phone video
     in memory twice (the app copies the upload to a temp file first).
     allow_map_fail: if the hazard map does not answer, carry on with levels marked
-    'unavailable' instead of stopping (the website shows "map unavailable", never "low")."""
+    'unavailable' instead of stopping (the website shows "map unavailable", never "low").
+    progress: optional function called with the step now starting ("address", "frames",
+    "privacy", "ai", "plan"), so the website can show real progress, not a fake bar."""
     led = Ledger()
     out = {"kind": "video", "address": address, "status": "ok", "ledger": led,
            "place": None, "answers": {}, "objects": [], "frames": None}
 
+    say = progress or (lambda step: None)
     # 1: where is it, and what do the official maps say?
+    say("address")
     if levels is not None:
         hz = hazards.from_levels(levels)
         led.add(name="Hazard levels", kind="free", note="simulated values, map skipped")
@@ -56,6 +60,7 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
     out["hazards"] = hz
 
     # 2: key frames, no AI. The free detector helps pick frames that show vehicles.
+    say("frames")
     ran_detector = use_detector and detect.available()
     spot = detect.vehicle_seen if ran_detector else None
     t0 = time.perf_counter()
@@ -76,6 +81,7 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
         return out
 
     # 3: free local detector; people are blurred before anything is uploaded.
+    say("privacy")
     found: list[dict] = []
     if ran_detector:
         t0 = time.perf_counter()
@@ -94,6 +100,7 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
                 note="not installed: pip install ultralytics (free vehicle/person detection)")
 
     # 4: the map decides what the paid model looks for.
+    say("ai")
     kinds = objects.to_ask(hz, skip=detect.HANDLES if ran_detector else set())
     out["asked"] = kinds
     if not kinds:
@@ -105,6 +112,7 @@ def run(address: str, video_bytes: bytes | None = None, *, suffix: str = ".mp4",
             out.update(status="ai_error", error=str(exc))
 
     # 7: rules.
+    say("plan")
     for o in found:
         o["score"], o["label"] = objects.importance(o["kind"], hz)
         # The local detector's scores run lower than a language model's self-rating.

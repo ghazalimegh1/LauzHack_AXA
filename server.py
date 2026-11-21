@@ -120,9 +120,17 @@ def to_json(res: dict) -> dict:
         "totals": res["ledger"].totals(),
         "mock": report.is_mock(res),
         "simulated_levels": any("simulated" in s.note for s in res["ledger"].steps),
-        "warning": ("The AI step failed, so only the free steps are shown."
-                    if res["status"] == "ai_error" else None),
+        "warning": _ai_warning(res),
     })
+
+
+def _ai_warning(res: dict) -> str | None:
+    if res["status"] != "ai_error":
+        return None
+    if "429" in res.get("error", ""):   # rate limit, after retries and fallback models
+        return ("The AI service is very busy right now, so only the free steps are shown "
+                "(vehicles). Please try again in a minute.")
+    return "The AI step could not be reached, so only the free steps are shown (vehicles)."
 
 
 def _friendly_error(res: dict) -> str:
@@ -147,9 +155,11 @@ def _images_for(res: dict) -> dict:
 def _run_job(job_id: str, address: str, path: str, k: int, use_detector: bool,
              levels: dict | None) -> None:
     job = _jobs[job_id]
+    job["args"] = {"address": address, "k": k, "use_detector": use_detector, "levels": levels}
     try:
         res = sitecheck.run(address, video_path=path, levels=levels, k=k,
-                            use_detector=use_detector, allow_map_fail=True)
+                            use_detector=use_detector, allow_map_fail=True,
+                            progress=lambda step: job.update(stage=step))
         if res["status"] in ("geo_error", "video_error"):
             log.warning("job %s: %s", job_id, res.get("error"))
             job.update(status="error", error=_friendly_error(res))
@@ -229,7 +239,31 @@ def analyze(address: str = Form(...), video_file: UploadFile = File(..., alias="
 @app.get("/api/jobs/{job_id}")
 def job_status(job_id: str) -> dict:
     job = _job(job_id)
-    return {k: job[k] for k in ("status", "error", "result") if k in job}
+    return {k: job[k] for k in ("status", "stage", "error", "result") if k in job}
+
+
+@app.post("/api/jobs/{job_id}/retry")
+def retry(job_id: str) -> dict:
+    """Runs the same check again with the video already on this computer (no new upload),
+    e.g. after the AI service was busy. The new result takes over the video file."""
+    old = _job(job_id)
+    if not old.get("video") or not old.get("args"):
+        raise HTTPException(404, "This video is no longer here. Please upload it again.")
+    path = old.pop("video")             # the old result no longer owns (or deletes) the file
+    new_id = uuid.uuid4().hex[:12]
+    _remember(new_id)
+    a = old["args"]
+    _worker.submit(_run_job, new_id, a["address"], path, a["k"], a["use_detector"], a["levels"])
+    return {"job_id": new_id}
+
+
+@app.get("/api/address")
+def address_suggestions(q: str = "") -> dict:
+    """Up to 6 Swiss addresses matching what the customer typed so far."""
+    try:
+        return {"suggestions": geo.suggest(q[:120])}
+    except geo.GeoError:
+        return {"suggestions": []}     # the field still works as plain text
 
 
 @app.get("/api/latest")

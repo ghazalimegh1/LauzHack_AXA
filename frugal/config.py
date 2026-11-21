@@ -42,6 +42,13 @@ _DEFAULTS = {
     "openrouter": ("google/gemini-2.5-flash-lite", "google/gemini-2.5-flash"),
     "mock": ("mock-cheap", "mock-strong"),
 }
+# If a model stays busy (rate limit) or fails, the same frames go to the next one here.
+# Same family and answer format, so boxes and prompts still fit; prices are listed below.
+FALLBACKS = {
+    "google/gemini-2.5-flash-lite": ["google/gemini-3.1-flash-lite", "google/gemini-2.5-flash"],
+    "google/gemini-2.5-flash": ["google/gemini-3.1-flash-lite"],
+    "claude-haiku-5-5": ["claude-sonnet-5-5"],
+}
 CHEAP_MODEL = os.environ.get("CHEAP_MODEL") or _DEFAULTS.get(PROVIDER, _DEFAULTS["mock"])[0]
 STRONG_MODEL = os.environ.get("STRONG_MODEL") or _DEFAULTS.get(PROVIDER, _DEFAULTS["mock"])[1]
 # The "send everything to a top model" design we compare against. Kept separate from

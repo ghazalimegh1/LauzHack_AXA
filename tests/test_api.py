@@ -188,3 +188,22 @@ def test_uploaded_video_plays_back(done):
 def test_pages_are_never_served_stale():
     # After a rebuild an old cached page asks for code files that no longer exist.
     assert client.get("/api/info").headers["cache-control"] == "no-cache"
+
+
+def test_progress_steps_retry_and_address_suggestions(done, monkeypatch):
+    # Real progress: the finished job went through every step of the pipeline.
+    assert client.get(f"/api/jobs/{done[0]}").json()["stage"] == "plan"
+    # "Try again" reuses the video on this computer: no new upload needed.
+    r = client.post(f"/api/jobs/{done[0]}/retry")
+    assert r.status_code == 200
+    body = _wait(r.json()["job_id"])
+    assert body["status"] == "ok"
+    assert client.get(f"/api/jobs/{r.json()['job_id']}/video").status_code == 200
+    # Address suggestions never break the form, even when the search service is down.
+    from frugal import geo
+    monkeypatch.setattr(geo, "suggest", lambda q: ["Route Cantonale 11, 1015 Lausanne"])
+    assert client.get("/api/address?q=route").json()["suggestions"][0].startswith("Route")
+    def down(q):
+        raise geo.GeoError("offline")
+    monkeypatch.setattr(geo, "suggest", down)
+    assert client.get("/api/address?q=route").json() == {"suggestions": []}

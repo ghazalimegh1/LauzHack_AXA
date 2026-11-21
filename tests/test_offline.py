@@ -246,3 +246,30 @@ def test_keyframes_prefer_frames_with_vehicles():
     assert [f["t"] for f in frames if f["picked"]] == [1.0]
     video._choose(frames, 1)                       # without the detector: sharpness decides
     assert sum(f["picked"] for f in frames) == 1
+
+
+def test_busy_model_is_retried_then_replaced(monkeypatch):
+    # 2026-11-21: "429 rate-limited upstream" lost every AI finding after a single try.
+    import requests
+    from frugal import config, vision
+    monkeypatch.setattr(vision.time, "sleep", lambda s: None)
+    answers = iter([429, 429, 200])
+    class Fake:
+        def __init__(self, code):
+            self.status_code = code
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise requests.HTTPError(response=self)
+    monkeypatch.setattr(vision.requests, "post", lambda *a, **k: Fake(next(answers)))
+    assert vision._post("https://example.invalid").status_code == 200       # third try works
+
+    tried = []
+    def one(model, jpegs, kinds):
+        tried.append(model)
+        if model == "google/gemini-2.5-flash-lite":
+            raise requests.HTTPError("429")
+        return {"model": model, "objects": [], "unclear": []}
+    monkeypatch.setattr(vision, "_find_one", one)
+    assert vision.find("google/gemini-2.5-flash-lite", [], [])["model"] == "google/gemini-3.1-flash-lite"
+    assert tried == ["google/gemini-2.5-flash-lite", "google/gemini-3.1-flash-lite"]
+    assert all(m in config.PRICES for ms in config.FALLBACKS.values() for m in ms)

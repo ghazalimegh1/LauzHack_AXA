@@ -28,6 +28,29 @@ ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 
 # ---------------- transport ----------------
+# 2026-11-21, during the hackathon: OpenRouter answered "429: google/gemini-2.5-flash-lite is
+# temporarily rate-limited upstream" (Google's shared pool, not our key or credit). One try
+# then lost every AI finding. So: a busy answer is retried after a short wait, and if the
+# model stays busy, find() moves on to a similar model (config.FALLBACKS).
+BUSY = {429, 500, 502, 503, 504}   # "try again" answers; 400/401/402 would fail again
+WAITS = (2, 5)                     # seconds before the 2nd and 3rd try (~7 s at most)
+
+
+def _post(url: str, **kwargs) -> requests.Response:
+    for wait in (0, *WAITS):
+        time.sleep(wait)
+        try:
+            r = requests.post(url, **kwargs)
+        except (requests.Timeout, requests.ConnectionError):
+            if wait == WAITS[-1]:
+                raise
+            continue
+        if r.status_code not in BUSY or wait == WAITS[-1]:
+            break
+    r.raise_for_status()
+    return r
+
+
 def _usd(model: str, tok_in: int, tok_out: int, reported=None) -> float | None:
     if reported is not None:
         return float(reported)          # OpenRouter's own figure
@@ -42,11 +65,10 @@ def _call(model: str, parts: list, max_tokens: int) -> dict:
         content = [{"type": "text", "text": p} if isinstance(p, str) else
                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                 "data": b64(p)}} for p in parts]
-        r = requests.post(ANTHROPIC_URL, timeout=90, json={
+        r = _post(ANTHROPIC_URL, timeout=90, json={
             "model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": content}]},
             headers={"x-api-key": config.API_KEY, "anthropic-version": "2023-06-01"})
-        r.raise_for_status()
         data = r.json()
         text = "".join(b.get("text", "") for b in data.get("content", []))
         u = data.get("usage") or {}
@@ -56,12 +78,11 @@ def _call(model: str, parts: list, max_tokens: int) -> dict:
     content = [{"type": "text", "text": p} if isinstance(p, str) else
                {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64(p)}}
                for p in parts]
-    r = requests.post(OPENROUTER_URL, timeout=90, json={
+    r = _post(OPENROUTER_URL, timeout=90, json={
         "model": model, "messages": [{"role": "user", "content": content}],
         "max_tokens": max_tokens, "temperature": 0, "usage": {"include": True},
         "reasoning": config.reasoning(model)},   # no paid hidden thinking for tiny JSON
         headers={"Authorization": f"Bearer {config.API_KEY}"})
-    r.raise_for_status()
     data = r.json()
     u = data.get("usage") or {}
     tin, tout = u.get("prompt_tokens", 0), u.get("completion_tokens", 0)
@@ -244,6 +265,18 @@ def _sizes(jpegs: list[bytes]) -> list[tuple[int, int]]:
 
 
 def find(model: str, jpegs: list[bytes], kinds: list[str]) -> dict:
+    """Asks `model`; if it stays busy or fails, the similar models in config.FALLBACKS.
+    The answer's "model" says which one really answered (shown on the details page)."""
+    tried = [model, *config.FALLBACKS.get(model, [])]
+    for i, m in enumerate(tried):
+        try:
+            return _find_one(m, jpegs, kinds)
+        except requests.RequestException:
+            if i == len(tried) - 1:
+                raise
+
+
+def _find_one(model: str, jpegs: list[bytes], kinds: list[str]) -> dict:
     n = len(jpegs)
     order = config.box_order(model)
     k = cache.key(model, *(hashlib.sha1(j).hexdigest() for j in jpegs), ",".join(kinds),
