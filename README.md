@@ -31,8 +31,10 @@ First time only: `.venv/bin/pip install -r requirements.txt`. The free detector 
 `models/yolo11n.pt` (5 MB, not in git); ultralytics downloads it if it is missing:
 `.venv/bin/python -c "from ultralytics import YOLO; YOLO('models/yolo11n.pt')"`.
 
-If `npm run build` or the tests sit at 0% CPU for minutes (seen on this Mac inside sandboxed
-tools), stop them and run them again from a normal terminal.
+If `npm run build` sits at 0% CPU without printing anything: the project lives in an
+iCloud-synced folder, and iCloud may have moved the files in `web/node_modules` to the cloud
+(only placeholders stay on disk, and reading one waits for a download). Fix: `cd web && npm ci`
+(reinstalls them from `package-lock.json` in a few seconds), then build again.
 
 Tests (no internet, no AI cost):
 

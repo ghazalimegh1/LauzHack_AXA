@@ -101,7 +101,9 @@ function Problem() {
 
 // Bars per year with the 30-year average as a dashed line. Scale: 0..300 CHF million.
 function DamageChart() {
-  const W = 520, H = 300, top = 34, base = 250, left = 20, slot = 120, bar = 74;
+  // The right strip (after the last bar) holds the average label, so it never covers a bar.
+  const W = 620, H = 320, top = 66, base = 270, left = 10, slot = 116, bar = 74;
+  const barsEnd = left + DAMAGE.length * slot;
   const y = (v) => base - (v / 300) * (base - top);
   return (
     <svg className="story-chart" viewBox={`0 0 ${W} ${H}`} role="img"
@@ -116,10 +118,11 @@ function DamageChart() {
           </g>
         );
       })}
-      <line x1={left} x2={W - 8} y1={y(AVERAGE_30Y)} y2={y(AVERAGE_30Y)} className="sc-avg" />
-      <text x={W - 8} y={y(AVERAGE_30Y) - 8} textAnchor="end" className="sc-avg-label">30-year average ≈115</text>
-      <line x1={left} x2={W - 8} y1={base} y2={base} className="sc-axis" />
-      <text x={left} y={16} className="sc-unit">CHF million · selected years</text>
+      <line x1={left} x2={barsEnd + 6} y1={y(AVERAGE_30Y)} y2={y(AVERAGE_30Y)} className="sc-avg" />
+      <text x={barsEnd + 14} y={y(AVERAGE_30Y) - 4} className="sc-avg-label">30-year</text>
+      <text x={barsEnd + 14} y={y(AVERAGE_30Y) + 18} className="sc-avg-label">average ≈115</text>
+      <line x1={left} x2={barsEnd} y1={base} y2={base} className="sc-axis" />
+      <text x={left} y={20} className="sc-unit">CHF million · selected years</text>
     </svg>
   );
 }
