@@ -39,6 +39,46 @@ Low-confidence objects are shown as "uncertain" and not counted: a person should
 - `frugal/sitecheck.py` – the video cascade and the box drawing.
 - `frugal/vision.py` – the only code that calls a paid model (Claude API or OpenRouter).
 
+## The website (main demo): two pages
+
+The Streamlit app (`streamlit run app.py`) stays as the fallback demo. The website is the main one:
+
+- **Customer page** `http://localhost:8000/`: address + video -> what to do before a storm, what to fix
+  this year, hail and water risk at the address. No costs, no models, no tables. Works on a phone.
+- **Jury page** `http://localhost:8000/demo.html`: frames picked by free code, boxes on the key frames,
+  how the map decided what the AI looks for, measured cost next to two baselines, honest limits.
+  Both pages show the newest finished check, so a run started on one page appears on the other.
+
+**One-time setup** (after the Python setup below; needs Node.js 18.18 or newer):
+```
+pip install -r requirements.txt          # adds fastapi, uvicorn, python-multipart, httpx
+cd web && npm install && npm run build && cd ..
+```
+**Start** (one program, one port):
+```
+uvicorn server:app --port 8000
+```
+After changing anything in `web/`, run `npm run build` in `web/` again and reload the browser.
+To edit the design with instant reload: keep the server running and run `npm run dev` in `web/`,
+then open `http://localhost:3000`.
+
+**How it fits together:** `server.py` (FastAPI) calls the unchanged cascade `frugal.sitecheck.run`,
+keeps the last 5 results in memory and serves JSON plus images (annotated frames, object crops, the
+filmstrip). Only privacy-blurred frames are ever served. `web/` is a small Next.js app that is built
+once into plain files in `web/out/`, which the same server hands out.
+
+**Measured on 2026-11-21** (real OpenRouter key, `eval/test_walk.mp4`, Route Cantonale, Lausanne):
+1 paid call to `google/gemini-2.5-flash-lite`, 1,568 tokens, **USD 0.000165 measured** (estimate 0.00014);
+the strong model was skipped. Same frames to `google/gemini-2.5-pro` would cost about 13x more,
+one HD frame per second to it about 230x more (both estimates). A repeat run comes from the cache: $0.
+
+**Demo tips for the website**
+- Run your real site video once before presenting: the second run is instant and free (cache).
+- No key in `.env` -> a grey "demo mode (no AI key)" badge, and all AI answers are simulated.
+- If the hazard map does not answer, the pages say "map unavailable", never "low".
+- The storm-warning switch on the customer page is simulated: say so.
+- Upload a big 4K video ahead of time if you can: 300 MB takes a while over Wi-Fi.
+
 ## Setup (about 10 minutes)
 
 1. Install Python 3.10 or newer from python.org (on macOS you may already have it: type `python3 --version` in Terminal).
@@ -58,7 +98,7 @@ Low-confidence objects are shown as "uncertain" and not counted: a person should
 ## First things to run at the hackathon
 
 ```
-python -m pytest -q                                   # 25 offline tests, should all pass
+python -m pytest -q                                   # 33 offline tests, should all pass
 python tools/make_test_video.py                       # writes eval/test_walk.mp4 for a quick demo
 python tools/check_models.py                          # are the two model IDs available? prices?
 python tools/check_layers.py "Gerberngasse 10, Bern"  # do the hazard layers answer?
