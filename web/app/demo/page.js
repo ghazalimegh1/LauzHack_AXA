@@ -3,7 +3,7 @@
 // Every number and box here comes from the real run (via the API); nothing is hard-coded.
 import { useEffect, useState } from "react";
 import CheckForm from "../../components/CheckForm";
-import { Chip, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../../components/ui";
+import { Chip, Hero, Spinner, Tag, TopBar, VideoPlayer } from "../../components/ui";
 import { frameUrl, getInfo, getLatest, runCheck, stripUrl } from "../../lib/api";
 import { COLOURS, GROUP_NAMES, riskText, times, usd } from "../../lib/format";
 
@@ -15,6 +15,7 @@ export default function DemoPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [settings, setSettings] = useState({ k: 6, detector: true, simulate: false, water: 1, hail: 2 });
+  const [showForm, setShowForm] = useState(false);   // the upload box opens on demand once a result exists
 
   useEffect(() => {
     document.title = "Site Check: assessment details";
@@ -35,6 +36,7 @@ export default function DemoPage() {
     setError("");
     try {
       setCheck(await runCheck(form));
+      setShowForm(false);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -45,22 +47,27 @@ export default function DemoPage() {
   const colours = (info && info.colours) || COLOURS;
   return (
     <main className="page">
-      <header className="top">
-        <span className="brand">Site Check <span className="muted">· assessment details</span></span>
-        <span className="top-right"><a href="/">Customer view</a><b className="axa">AXA</b></span>
-      </header>
+      <TopBar><a href="/">Customer view</a></TopBar>
 
       <Hero eyebrow="Assessment details" title="How the check works">
         <p>Official hazard maps and privacy-first image processing help identify what to protect.</p>
       </Hero>
 
-      <section className="form-card">
-        <CheckForm onSubmit={onSubmit} busy={busy} buttonText="→  Analyse site">
-          <Settings settings={settings} setSettings={setSettings} info={info} />
-        </CheckForm>
-        {busy && <Spinner>Picking frames, detecting objects, checking the maps...</Spinner>}
-        {error && <p className="error">{error}</p>}
-      </section>
+      {/* With a video already analysed, the upload box would only be in the way: it stays
+          closed until someone asks for it. Without a result, it is shown straight away. */}
+      {check && !showForm && !busy ? (
+        <section className="form-card form-card--closed">
+          <button className="link" onClick={() => setShowForm(true)}>Analyse another video</button>
+        </section>
+      ) : (
+        <section className="form-card">
+          <CheckForm onSubmit={onSubmit} busy={busy} buttonText="→  Analyse site">
+            <Settings settings={settings} setSettings={setSettings} info={info} />
+          </CheckForm>
+          {busy && <Spinner>Picking frames, detecting objects, checking the maps...</Spinner>}
+          {error && <p className="error">{error}</p>}
+        </section>
+      )}
 
       {check && <Results check={check} colours={colours} />}
     </main>
@@ -108,21 +115,19 @@ function Results({ check, colours }) {
       {r.mock && <p className="note">This result is illustrative and not a final assessment.</p>}
       {r.warning && <p className="error">{r.warning}</p>}
       <section className="block">
-        <Eyebrow>Step 0 · the upload</Eyebrow>
         <h2>The uploaded video</h2>
         <p className="lead">Shown for reference only. The assessment uses the selected key frames below.</p>
         <VideoPlayer jobId={check.jobId} />
       </section>
-      <Frames check={check} />
       <Found check={check} colours={colours} />
-      <MapDecision r={r} />
+      <Frames check={check} />
       <Cost r={r} />
-      <Limits />
+      <MapDecision r={r} />
     </div>
   );
 }
 
-// 1. Free code turns thousands of video frames into a handful.
+// Free code turns thousands of video frames into a handful.
 function Frames({ check }) {
   const f = check.result.frugal;
   const numbers = [
@@ -131,7 +136,6 @@ function Frames({ check }) {
   ];
   return (
     <section className="block">
-      <Eyebrow>Step 1 · free code</Eyebrow>
       <h2>Frames</h2>
       <p className="lead">Dark, blurry and repeated views are removed before the assessment.</p>
       <div className="numbers">
@@ -145,7 +149,7 @@ function Frames({ check }) {
   );
 }
 
-// 2. The key frames with the boxes the detector and the models really returned.
+// The key frames with the boxes the detector and the models really returned (shown first).
 function Found({ check, colours }) {
   const [open, setOpen] = useState(null);
   const r = check.result;
@@ -159,7 +163,6 @@ function Found({ check, colours }) {
   }, []);
   return (
     <section className="block">
-      <Eyebrow>Step 2 · image processing</Eyebrow>
       <h2>What the camera found</h2>
       <p className="lead">Objects are identified in the selected frames, and people are blurred before upload.</p>
       <div className="frames">
@@ -197,11 +200,10 @@ function Found({ check, colours }) {
   );
 }
 
-// 3. The official map decides which risks matter at this address.
+// The official map decides which risks matter at this address.
 function MapDecision({ r }) {
   return (
     <section className="block">
-      <Eyebrow>Step 3 · official hazard maps</Eyebrow>
       <h2>How the map decided</h2>
       <p className="lead">Only object types that matter at this address are included in the assessment.</p>
       <div className="two">
@@ -226,7 +228,7 @@ function MapDecision({ r }) {
   );
 }
 
-// 4. Our cost next to two baselines, all estimated with the same rule.
+// Our cost next to two baselines, all estimated with the same rule.
 function Cost({ r }) {
   const f = r.frugal;
   const fromCache = r.ledger.some((s) => s.kind === "ai" && s.note.includes("cache"));
@@ -239,7 +241,6 @@ function Cost({ r }) {
   const max = Math.max(...bars.map((b) => b[1]), 1e-12);
   return (
     <section className="block">
-      <Eyebrow>Step 4 · efficiency</Eyebrow>
       <h2>Processing efficiency</h2>
       <p className="lead">Only the information needed for a clear assessment is processed.</p>
       <div className="numbers">
@@ -271,20 +272,6 @@ function Cost({ r }) {
       <p className="caption">
         Usage estimates are based on image size and the service usage report.
       </p>
-    </section>
-  );
-}
-
-function Limits() {
-  return (
-    <section className="block">
-      <Eyebrow>Limits</Eyebrow>
-      <h2>Honest limits</h2>
-      <ul className="limits">
-        <li>It only judges what the camera sees: not roof strength, not what is behind walls.</li>
-        <li>Not seen does not mean safe: a missing box is not a clean bill of health.</li>
-        <li>Unclear frames are escalated for additional review.</li>
-      </ul>
     </section>
   );
 }

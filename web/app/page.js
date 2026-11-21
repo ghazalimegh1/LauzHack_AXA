@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import CheckForm from "../components/CheckForm";
 import Forecast, { useForecast } from "../components/Forecast";
-import { Chip, Eyebrow, Hero, Spinner, Tag, VideoPlayer } from "../components/ui";
+import { Chip, Eyebrow, Hero, Spinner, Tag, TopBar, VideoPlayer } from "../components/ui";
 import { cropUrl, getInfo, getLatest, runCheck } from "../lib/api";
 import { COLOURS, riskText } from "../lib/format";
 
@@ -57,10 +57,7 @@ export default function CustomerPage() {
   const colours = (info && info.colours) || COLOURS;
   return (
     <main className="page">
-      <header className="top">
-        <span className="brand">Site Check</span>
-        <span className="top-right"><b className="axa">AXA</b></span>
-      </header>
+      <TopBar />
 
       {showForm ? (
         <>

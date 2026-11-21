@@ -72,3 +72,16 @@ export function VideoPlayer({ jobId }) {
            preload="metadata" onError={() => setBroken(true)} />
   );
 }
+
+// The AXA logo, top right on both pages (image supplied by the team: web/public/axa-logo.png).
+// children: small links shown left of the logo, e.g. "Customer view".
+export function TopBar({ children }) {
+  return (
+    <header className="top">
+      <span className="top-right">
+        {children}
+        <img className="logo" src="/axa-logo.png" alt="AXA" />
+      </span>
+    </header>
+  );
+}
