@@ -197,43 +197,6 @@ function MapPart({ r }) {
   );
 }
 
-function detectorText(r) {
-  if (!r.settings.detector) return ["off", "switched off in the settings"];
-  const missing = r.ledger.some((row) => (row.note || "").includes("detector file missing"));
-  if (missing) return ["–", "detector file missing"];
-  const n = r.findings.filter((f) => f.source === "local detector").length;
-  return [n, n === 1 ? "vehicle found by the free local detector" : "vehicles found by the free local detector"];
-}
-
-function FreePart({ r }) {
-  const f = r.frames;
-  const [vehicles, vehicleText] = detectorText(r);
-  const steps = [
-    [f.in_video.toLocaleString("en-US"), "frames in the video"],
-    [f.sampled, "sampled and checked by free code"],
-    [f.picked, "key frames picked"],
-    [r.people_blurred, r.people_blurred === 1 ? "person blurred" : "people blurred"],
-    [vehicles, vehicleText],
-  ];
-  // Older results have no merge count; only show it when the check reported one.
-  if (r.duplicates_removed != null) {
-    steps.push([r.duplicates_removed, r.duplicates_removed === 1 ? "repeated find merged" : "repeated finds merged"]);
-  }
-  if (r.copies_dropped != null) {
-    steps.push([r.copies_dropped, r.copies_dropped === 1 ? "copied AI box dropped" : "copied AI boxes dropped"]);
-  }
-  return (
-    <Part title="2 · Free steps first"
-      intro="All of this runs on this computer with no AI and no cost.">
-      <div className="stats">
-        {steps.map(([n, text]) => (
-          <div className="stat" key={text}><b>{n}</b><small>{text}</small></div>
-        ))}
-      </div>
-    </Part>
-  );
-}
-
 // The cost line: a measured (billed) number when there is one, otherwise a clearly
 // labelled estimate, and words instead of "$0" when no AI call was made.
 function costLine(c, r) {
@@ -259,7 +222,7 @@ function CostPart({ r }) {
   const max = Math.max(...c.comparison.map((b) => b.usd), 1e-9);
   const models = (r.ai.models || []).join(", ");
   return (
-    <Part title="3 · Cost"
+    <Part title="2 · Cost"
       intro="One call for all key frames on a small model, a second look only for unclear frames.">
       <p className="costline">
         <span className="label">Cost of this check</span>
@@ -293,7 +256,7 @@ function ConfidencePart({ r }) {
   return (
     <details className="frugal-part frugal-details">
       <summary>
-        <h3>4 · Detection confidence</h3>
+        <h3>3 · Detection confidence</h3>
         <span className="quiet">{n === 0 ? "no objects found" : `${n} ${n === 1 ? "object" : "objects"} found`}</span>
       </summary>
       <p className="quiet frugal-intro">
@@ -334,7 +297,6 @@ function Frugal({ job }) {
   return (
     <Section id="frugal" title="How we kept the model frugal and cheap" paper>
       <MapPart r={r} />
-      <FreePart r={r} />
       <CostPart r={r} />
       <ConfidencePart r={r} />
     </Section>
