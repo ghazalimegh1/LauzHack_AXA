@@ -102,18 +102,18 @@ def test_price_fallback_when_no_cost_reported():
 
 
 def test_parse_answer_with_fences_and_bad_entries():
-    text = '```json\n{"o": [{"f": 0, "t": "outdoor_goods", "b": [100, 200, 300, 400], "c": 0.7}, ' \
-           '{"f": 9, "t": "outdoor_goods", "b": [1, 2, 3, 4]}, ' \
+    text = '```json\n{"o": [{"f": 0, "t": "glass_roof", "b": [100, 200, 300, 400], "c": 0.7}, ' \
+           '{"f": 9, "t": "glass_roof", "b": [1, 2, 3, 4]}, ' \
            '{"f": 0, "t": "spaceship", "b": [0, 0, 500, 500]}], "u": [1, 7]}\n```'
-    objs, unclear = vision.read_answer(text, ["outdoor_goods"], 2)
+    objs, unclear = vision.read_answer(text, ["glass_roof"], 2)
     assert len(objs) == 1 and objs[0]["frame"] == 0
     assert objs[0]["box"] == [0.2, 0.1, 0.4, 0.3]       # [ymin,xmin,ymax,xmax] -> [x0,y0,x1,y1]
     assert unclear == {1}
 
 
 def test_cut_off_answer_keeps_complete_objects():
-    text = '{"o":[{"f":1,"t":"outdoor_goods","b":[10,20,110,220],"c":0.9},{"f":0,"t":"outdoor_g'
-    objs, _ = vision.read_answer(text, ["outdoor_goods"], 2)
+    text = '{"o":[{"f":1,"t":"solar_panel","b":[10,20,110,220],"c":0.9},{"f":0,"t":"solar_pa'
+    objs, _ = vision.read_answer(text, ["solar_panel"], 2)
     assert [o["frame"] for o in objs] == [1]
 
 
@@ -124,7 +124,7 @@ def test_long_key_names_are_accepted():
 
 
 def test_prompt_puts_frames_first_and_explains_unclear():
-    parts = vision.parts_for(vision.prompt(["outdoor_goods"], 2), [b"a", b"b"])
+    parts = vision.parts_for(vision.prompt(["glass_roof"], 2), [b"a", b"b"])
     assert parts[:4] == ["Frame 0:", b"a", "Frame 1:", b"b"]
     assert "a clear frame without these objects is not unclear" in parts[-1]
 
@@ -166,6 +166,6 @@ def test_plain_name_is_kept_and_tiny_boxes_are_dropped():
 
 
 def test_boxes_outside_the_picture_are_clamped():
-    objs, _ = vision.read_answer('{"o":[{"f":0,"t":"outdoor_goods","b":[-50,900,600,1200],"c":0.9}]}',
-                                 ["outdoor_goods"], 1)
+    objs, _ = vision.read_answer('{"o":[{"f":0,"t":"glass_roof","b":[-50,900,600,1200],"c":0.9}]}',
+                                 ["glass_roof"], 1)
     assert objs[0]["box"] == [0.9, 0.0, 1.0, 0.6]

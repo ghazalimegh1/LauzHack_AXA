@@ -13,9 +13,9 @@ def hazards(hail=1, water=1, available=True):
 
 
 def test_importance_is_weight_times_level():
-    assert catalogue.importance("ramp_down", {"hail": 0, "water": 2}) == 6
+    assert catalogue.importance("glass_roof", {"hail": 2, "water": 0}) == 6
     assert catalogue.importance("ground_door", {"hail": 2, "water": 1}) == 2
-    assert catalogue.importance("outdoor_goods", {"hail": 0, "water": 2}) == 0
+    assert catalogue.importance("solar_panel", {"hail": 0, "water": 2}) == 0
 
 
 def test_labels():
@@ -34,7 +34,7 @@ def test_vehicle_is_high_wherever_hail_is_at_least_medium():
 
 def test_map_decides_what_the_ai_looks_for():
     kinds = catalogue.kinds_to_ask({"hail": 1, "water": 0}, detector_on=True)
-    assert set(kinds) == {"outdoor_goods"}
+    assert set(kinds) == {"glass_roof", "solar_panel", "external_blinds", "outdoor_goods"}
     assert "vehicle" in catalogue.kinds_to_ask({"hail": 1, "water": 0}, detector_on=False)
     assert catalogue.kinds_to_ask({"hail": 0, "water": 0}, detector_on=True) == []
     water = catalogue.kinds_to_ask({"hail": 0, "water": 2}, detector_on=True)
@@ -43,8 +43,8 @@ def test_map_decides_what_the_ai_looks_for():
 
 def test_low_confidence_is_uncertain_and_not_counted():
     lv = {"hail": 2, "water": 0}
-    sure = rules.score_finding(finding("outdoor_goods", 0.8), lv)
-    unsure = rules.score_finding(finding("outdoor_goods", 0.4), lv)
+    sure = rules.score_finding(finding("glass_roof", 0.8), lv)
+    unsure = rules.score_finding(finding("glass_roof", 0.4), lv)
     assert sure["counted"] and not sure["uncertain"]
     assert unsure["uncertain"] and not unsure["counted"]
     # the local detector has its own, lower bar
@@ -52,27 +52,27 @@ def test_low_confidence_is_uncertain_and_not_counted():
 
 
 def test_weak_points_group_by_kind_and_keep_uncertain_apart():
-    lv = {"hail": 1, "water": 1}
+    lv = {"hail": 1, "water": 0}
     found = [rules.score_finding(f, lv) for f in [
         finding("vehicle", 0.9, "local detector", t=3, fid=0),
         finding("vehicle", 0.8, "local detector", t=9, fid=1),
-        finding("outdoor_goods", 0.3, t=5, fid=2),
-        finding("ramp_down", 0.9, t=7, fid=3),
+        finding("solar_panel", 0.3, t=5, fid=2),
+        finding("glass_roof", 0.9, t=7, fid=3),
     ]]
     points = rules.weak_points(found, lv)
     names = [p["kind"] for p in points]
     assert names[0] == "vehicle" and points[0]["count"] == 2 and points[0]["seen_at"] == [3, 9]
-    goods = next(p for p in points if p["kind"] == "outdoor_goods")
-    assert goods["status"] == "uncertain"
-    assert names[-1] == "outdoor_goods"                # uncertain ones come last
+    solar = next(p for p in points if p["kind"] == "solar_panel")
+    assert solar["status"] == "uncertain"
+    assert names[-1] == "solar_panel"                # uncertain ones come last
 
 
 def test_site_action():
     lv = {"hail": 1, "water": 1}
     high = rules.weak_points([rules.score_finding(finding("vehicle", 0.9, "local detector"), lv)], lv)
     assert rules.decide(high, hazards())["text"] == "Propose an on-site prevention check"
-    med = rules.weak_points([rules.score_finding(finding("ramp_down", 0.9), lv)], lv)
+    med = rules.weak_points([rules.score_finding(finding("glass_roof", 0.9), lv)], lv)
     assert rules.decide(med, hazards())["text"] == "Send targeted prevention tips"
-    unsure = rules.weak_points([rules.score_finding(finding("outdoor_goods", 0.2), lv)], lv)
+    unsure = rules.weak_points([rules.score_finding(finding("glass_roof", 0.2), lv)], lv)
     assert rules.decide(unsure, hazards())["text"] == "No action needed"
     assert rules.decide([], hazards(available=False))["key"] == "unknown"

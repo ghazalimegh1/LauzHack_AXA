@@ -38,11 +38,13 @@ def prompt(kinds: list, n: int) -> str:
             "For each object give f = frame number, t = type, d = one plain word for it "
             "(e.g. pallets, machine, van), "
             f"b = tight box {_BOX_TEXT} scaled 0-1000 around that object only, "
-            "c = confidence 0-1. Skip objects too small or blurred to name. "
+            "c = confidence 0-1. Skip objects too small or blurred to name; shadows and "
+            "reflections are not objects. Judge every frame on its own: never repeat a box "
+            "from another frame. "
             "u = list of frames too dark, blurred or blocked to judge; a clear frame without "
             "these objects is not unclear. At most 5 objects per frame. "
             "Reply with JSON only, no other text, e.g. "
-            f'{{"o":[{{"f":0,"t":"outdoor_goods","d":"pallets","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
+            f'{{"o":[{{"f":0,"t":"glass_roof","d":"skylight","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
 
 
 def parts_for(prompt_text: str, images: list) -> list:

@@ -62,7 +62,7 @@ Both pages show the newest finished check.
 | 1 | Address -> coordinates (geo.admin.ch), then the official hail and surface-water/flood maps at that point (geo.admin.ch WMS). Level 0-2 per hazard. If the map does not answer: "map unavailable", never "low". | free |
 | 2 | Key frames (the team's earlier frame picker, ported): 2 frames per second; drop dark / overexposed / blurry ones, judged against the video's own median; "walking sharpness" clips street lamps and lets the weaker of the two edge directions count, because walking smears one direction; best frame of each equal part of the walk, unless a 32×18 miniature shows the same view as a frame already picked; brighten dim ones. Default 6. | free |
 | 3 | YOLO11n on this computer finds vehicles and people: one look at 960 px (the size of our frames; only car / truck / bus / motorcycle / person, one box per object), plus a second people-only look at 640 px. A person either look finds is blurred before any image leaves the computer. Confidence from 35%, a vehicle counts from 50%. | free |
-| 4 | The map decides what the AI looks for: only object types whose hazard is at least level 1. Basic things only: goods or machines outside (hail), and basement windows / light wells, doors at ground level, ramps down and critical equipment low (water). Skylights, solar panels and blinds are not looked for (team decision). Vehicles are left to the free detector. | free |
+| 4 | The map decides what the AI looks for: only object types whose hazard is at least level 1. Each type is described with what counts and the look-alikes that do not (e.g. bicycles and scooters are not goods; a metal roof is not a glass roof). Vehicles are left to the free detector. | free |
 | 5 | Cheap model `google/gemini-2.5-flash-lite`: all key frames in ONE call, 512 px images. The prompt asks for a tight box per object and one plain word for it ("pallets", "machine"); boxes are clamped to the picture and boxes under 3% of its width or height are dropped. Compact JSON, boxes on a 0-1000 grid, cut-off answers still give their complete objects. | paid |
 | 6 | Strong model `google/gemini-2.5-flash`: only frames the cheap model was unsure about, 768 px. | paid |
 | 7 | AI boxes copied from an earlier key frame (same kind, same box to the digit, on a different view) are dropped; our test set showed the AI sometimes repeats one frame's answer on a later frame. Repeats are merged: the same kind of object with heavily overlapping boxes in one frame, or in a key frame up to 1.5 s later, counts once (the most confident box is kept unchanged). Rules: importance = weight × hazard level; high ≥ 4, medium ≥ 2, low ≥ 1. Finds below 60% confidence (50% for the detector) are left out everywhere; the customer page only says that an expert should take a look. A close-up that is too small or too blurred to recognise is not shown; the label is shown alone. Action: on-site prevention check / targeted tips / no action. | free |
@@ -76,20 +76,29 @@ The detector label shown everywhere comes from the weights file name
 
 ## Measured cost (2026-11-22, address "Route Cantonale 11, 1015 Lausanne", fresh AI answers)
 
-The map gives hail level 1 (3.5 cm hailstones, 50-year) and water level 0 there. At the time
-of this measurement the AI also looked for skylights, solar panels and blinds; it now looks
-only for goods/machines there, so the prompt is a little shorter.
+The map gives hail level 1 (3.5 cm hailstones, 50-year) and water level 0 there, so the
+AI only looks for skylights, solar panels, blinds and goods/machines.
 
 | Video | AI calls | Cost (billed by OpenRouter) | Found |
 | --- | --- | --- | --- |
-| `IMG_2406.MOV` (daytime walk, 41 s) | 1 (Flash-Lite) | $0.00022 | parked cars (high); glass canopy, external blinds (medium); pallets and a machine at 23 s and 34 s (medium); 4 people blurred |
-| `IMG_2408.MOV` (night walk, 24 s) | 2 (Flash-Lite, then Flash for 6 unclear frames) | $0.0012 | parked cars (high); equipment outside at 0 s and 6.5 s (medium) |
-| `IMG_1420.MOV` (47 s, indoor room) | 2 | $0.00069 | nothing -> "No action needed" |
+| `IMG_2406.MOV` (daytime walk, 41 s) | 2 (Flash-Lite, then Flash for 1 unclear frame) | $0.00097 | parked cars (high); external blinds at 0 s and 9 s, pallets at 23 s (medium); 4 people blurred |
+| `IMG_2408.MOV` (night walk, 24 s) | 2 (Flash-Lite, then Flash for 6 unclear frames) | $0.0013 | parked cars (high); external blinds at 0 s, 6.5 s and 24 s (medium) |
+| `IMG_1420.MOV` (47 s, indoor room) | 2 (Flash-Lite, then Flash for 6 unclear frames) | $0.0014 | one false "blinds" at 2 s (a bedroom window) |
 
-Before the computer-vision refinement (same day, same videos) the bills were $0.00031,
-$0.0012 and $0.00080. Billed cost can include OpenRouter's discount for repeated input, so
-the fair comparison is tokens: +38 prompt tokens per call (+2%), slightly shorter answers,
-about 2% cheaper overall.
+How good is the detection? We built a small test set: the 18 key frames of these three
+videos, labelled by eye (by us, not by an independent checker), scored per frame and object
+type. With the sharper object descriptions now in the prompt (what counts, and look-alikes
+that do not: bicycles are not goods, a metal roof is not a glass roof, shadows are not
+objects, never repeat another frame's box), two fresh runs scored 9 right, 1 and 3 false
+alarms, 3 missed. The earlier prompt scored 7 right, 2 false alarms, 5 missed. All four
+frames with blinds are now found. The price: on the day video the cheap model now leaves
+one frame to the strong model, so its bill rose from $0.00022 to about $0.001; the night
+video stayed about the same ($0.0012 -> $0.0013). Earlier bills the same day, before the
+sharper descriptions: $0.00022, $0.0012 and $0.00069.
+
+A free text-prompted detector (YOLO-World v2, run locally) was tried on the same test set
+and did worse (at best 4 right, 4 false alarms, 8 missed: it called a bedroom window a
+basement window and never found blinds), so it is not used.
 
 Same estimate rule for all three designs (night video): ours $0.0015, the same frames on
 Gemini 2.5 Pro $0.0061 (about 4×), a naive 1 HD frame per second on Gemini 2.5 Pro $0.068

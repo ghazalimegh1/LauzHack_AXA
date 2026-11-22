@@ -23,9 +23,9 @@ def test_four_near_identical_boxes_in_one_frame_become_one():
 
 
 def test_different_kinds_or_places_stay_apart():
-    finds = [find(0, 0.0, "outdoor_goods", [0.1, 0.1, 0.5, 0.5], 0.8),
-             find(0, 0.0, "ramp_down", [0.1, 0.1, 0.5, 0.5], 0.7),   # same box, other kind
-             find(0, 0.0, "outdoor_goods", [0.6, 0.6, 0.9, 0.9], 0.8)]        # same kind, elsewhere
+    finds = [find(0, 0.0, "glass_roof", [0.1, 0.1, 0.5, 0.5], 0.8),
+             find(0, 0.0, "external_blinds", [0.1, 0.1, 0.5, 0.5], 0.7),   # same box, other kind
+             find(0, 0.0, "glass_roof", [0.6, 0.6, 0.9, 0.9], 0.8)]        # same kind, elsewhere
     kept, dropped = merge.merge(finds)
     assert dropped == 0 and len(kept) == 3
 
@@ -38,8 +38,8 @@ def test_same_object_in_the_next_key_frame_counts_once():
 
 
 def test_far_apart_frames_are_not_merged():
-    a = find(1, 9.0, "outdoor_goods", [0.2, 0.1, 0.6, 0.5], 0.8)
-    b = find(0, 0.0, "outdoor_goods", [0.2, 0.1, 0.6, 0.5], 0.8)    # same spot on screen, 9 s apart
+    a = find(1, 9.0, "glass_roof", [0.2, 0.1, 0.6, 0.5], 0.8)
+    b = find(0, 0.0, "glass_roof", [0.2, 0.1, 0.6, 0.5], 0.8)    # same spot on screen, 9 s apart
     kept, dropped = merge.merge([a, b])
     assert dropped == 0 and kept == [a, b]                        # original order kept
 
@@ -83,7 +83,7 @@ def test_box_copied_to_a_later_frame_is_dropped():
 def test_real_finds_are_not_taken_for_copies():
     a = ai(3, 23.0, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])
     moved = ai(4, 34.0, "outdoor_goods", [0.50, 0.46, 0.999, 0.64])        # box differs
-    other = ai(4, 34.0, "ramp_down", [0.49, 0.46, 0.999, 0.64])           # other kind
+    other = ai(4, 34.0, "glass_roof", [0.49, 0.46, 0.999, 0.64])           # other kind
     close = ai(2, 22.5, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])        # 0.5 s before: merge decides
     car1 = ai(0, 0.0, "vehicle", [0.1, 0.1, 0.2, 0.2], source="local detector")
     car2 = ai(2, 13.0, "vehicle", [0.1, 0.1, 0.2, 0.2], source="local detector")

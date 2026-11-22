@@ -17,7 +17,7 @@ const AVERAGE_30Y = 115;
 
 // Measured, billed by OpenRouter on our two test videos (see README "Measured cost").
 // The page only knows the latest run, so the two reference numbers are kept here.
-const MEASURED = { day: "$0.0003", night: "$0.0012" };
+const MEASURED = { day: "$0.0010", night: "$0.0013" };
 
 const PARTS = 2;
 

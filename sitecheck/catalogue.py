@@ -13,9 +13,27 @@ KINDS = {
         why="Hail dents and breaks parked vehicles, and many are hit at the same time.",
         now="Move vehicles into a garage or under a roof.",
         later="Plan covered parking or hail nets for the car park."),
+    "glass_roof": dict(
+        hazard="hail", weight=3, name="Skylight / glass roof",
+        find="skylight, glass roof, glass canopy or greenhouse glass (see-through; not a metal or solid roof)",
+        why="Large hailstones break glass roofs, and rain then gets inside.",
+        now="Close skylights and keep people and valuable items away from glass roofs.",
+        later="Replace with hail-resistant glazing when the roof is renewed."),
+    "solar_panel": dict(
+        hazard="hail", weight=2, name="Solar panels",
+        find="solar or photovoltaic panels on a roof, facade or carport",
+        why="Panels are exposed and costly; hail cracks their glass surface.",
+        now="Take dated photos of the panels so their condition is documented.",
+        later="Choose panels with a high hail resistance class at the next renewal."),
+    "external_blinds": dict(
+        hazard="hail", weight=2, name="External blinds / awnings",
+        find="slat blinds or louvres on the outside of windows (up, down or half down), roller shutters or fabric awnings",
+        why="Extended blinds and awnings are easily torn or dented by hail.",
+        now="Pull in all external blinds and awnings.",
+        later="Let the blinds retract automatically when a hail warning comes in."),
     "outdoor_goods": dict(
         hazard="hail", weight=2, name="Goods or machines outside",
-        find="pallets, stored goods, containers, machines or equipment standing outdoors",
+        find="pallets, stored goods, building materials, containers, machines or equipment standing outdoors (not bicycles, scooters, bins or planters)",
         why="Stock and machines left in the open are damaged by hail and heavy rain.",
         now="Bring goods and machines inside, or cover them with tarpaulins.",
         later="Set up a covered storage area."),
