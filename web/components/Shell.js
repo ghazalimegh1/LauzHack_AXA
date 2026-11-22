@@ -52,7 +52,7 @@ export function Footer({ children }) {
   return (
     <footer className="footer">
       <div className="inner">
-        <span>Frugal Site Check · LauzHack 2026 · AXA challenge “Frugal use of Multimodal AI”</span>
+        <span>Site Check AXA · LauzHack 2026 · AXA challenge “Frugal use of Multimodal AI”</span>
         {children}
       </div>
     </footer>

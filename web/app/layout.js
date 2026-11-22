@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Frugal Site Check",
+  title: "Site Check AXA",
   description: "Film a short walk around your business site and learn what a storm would hit first.",
   icons: { icon: "/axa-logo.png", apple: "/axa-logo.png" },
 };

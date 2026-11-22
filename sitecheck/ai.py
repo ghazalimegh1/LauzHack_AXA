@@ -46,7 +46,7 @@ def _http_post(model: str, parts: list, max_tokens: int, timeout=None):
         "reasoning": {"enabled": False},   # hidden thinking is billed and not needed here
         "usage": {"include": True},        # OpenRouter then reports the real cost
     }
-    headers = {"Authorization": f"Bearer {settings.api_key()}", "X-Title": "Frugal Site Check"}
+    headers = {"Authorization": f"Bearer {settings.api_key()}", "X-Title": "Site Check AXA"}
     try:
         r = requests.post(URL, json=body, headers=headers, timeout=timeout or settings.AI_TIMEOUT_S)
     except requests.RequestException:

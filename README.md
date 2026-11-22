@@ -1,4 +1,4 @@
-# Frugal Site Check
+# Site Check AXA
 
 LauzHack 2026 · AXA challenge "Frugal use of Multimodal AI".
 

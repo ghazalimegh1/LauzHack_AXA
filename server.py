@@ -1,4 +1,4 @@
-"""Frugal Site Check: one server on port 8000 for the API and both web pages.
+"""Site Check AXA: one server on port 8000 for the API and both web pages.
 
 Start:  .venv/bin/python -m uvicorn server:app --port 8000
 """
@@ -25,7 +25,7 @@ from sitecheck import hazard_map, pipeline, render, settings
 log = logging.getLogger("sitecheck")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-app = FastAPI(title="Frugal Site Check", docs_url=None, redoc_url=None)
+app = FastAPI(title="Site Check AXA", docs_url=None, redoc_url=None)
 
 VIDEO_TYPES = {".mov": "video/mp4", ".mp4": "video/mp4", ".m4v": "video/mp4",
                ".webm": "video/webm"}   # QuickTime files play in Chrome when sent as MP4
