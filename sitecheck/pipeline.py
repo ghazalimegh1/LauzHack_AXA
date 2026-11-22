@@ -126,7 +126,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                 sent_sizes["cheap"].append(size)
             try:
                 ans = ask(settings.CHEAP_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
-                          settings.CHEAP_MAX_OUT, use_cache=use_cache)
+                          max(settings.CHEAP_MAX_OUT, settings.CHEAP_OUT_PER_FRAME * len(imgs)),
+                          use_cache=use_cache)
                 _book(row, ans, ai_info, len(imgs))
                 objects, unsure_frames = vision.read_answer(ans["text"], kinds, len(imgs),
                                                             sent_sizes["cheap"])
@@ -154,7 +155,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
                     sent_sizes["strong"].append(size)
                 try:
                     ans = ask(settings.STRONG_MODEL, vision.parts_for(vision.prompt(kinds, len(imgs)), imgs),
-                              settings.STRONG_MAX_OUT, use_cache=use_cache)
+                              max(settings.STRONG_MAX_OUT, settings.STRONG_OUT_PER_FRAME * len(imgs)),
+                              use_cache=use_cache)
                     _book(row, ans, ai_info, len(imgs))
                     objects, _ = vision.read_answer(ans["text"], kinds, len(imgs), sent_sizes["strong"])
                     redo = set(order)

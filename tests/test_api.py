@@ -65,7 +65,7 @@ def wait(client, job_id):
 def test_info(client):
     body = client.get("/api/info").json()
     assert body["risk_colours"]["high"] == "#C62828"
-    assert body["keyframes"] == {"default": 6, "min": 4, "max": 10}
+    assert body["keyframes"] == {"default": 6, "min": 4, "max": 15}
     assert body["models"]["cheap"] == "google/gemini-2.5-flash-lite"
 
 

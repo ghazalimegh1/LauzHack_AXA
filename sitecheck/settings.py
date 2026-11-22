@@ -79,7 +79,7 @@ NAIVE_FRAME = (1280, 720)   # "HD" frame of the naive design in the comparison
 SAMPLES_PER_S = 2           # keep 2 frames per second of video
 MAX_SAMPLES = 360           # very long videos: wider spacing instead of more work
 KEYFRAMES_DEFAULT = 6
-KEYFRAMES_MIN, KEYFRAMES_MAX = 4, 10
+KEYFRAMES_MIN, KEYFRAMES_MAX = 4, 15   # the product uses 6; up to 15 for experiments
 WORK_PX = 960               # frames are kept at this size in memory
 
 # ---------------- AI answers ----------------
@@ -87,6 +87,9 @@ UNSURE_BELOW = 0.6          # confidence below this: the strong model takes a se
                             # and if it is still below, the finding is "uncertain"
 CHEAP_MAX_OUT = 900         # output tokens: a short JSON list, never prose
 STRONG_MAX_OUT = 700
+# More frames need a longer answer (6 frames already used ~860 tokens), so the limit grows
+# per frame above these minimums; up to 6 frames it stays the same, so cached answers still match.
+CHEAP_OUT_PER_FRAME, STRONG_OUT_PER_FRAME = 150, 100
 
 # ---------------- risk colours (shared with the website via /api/info) ----------------
 RISK_COLOURS = {"high": "#C62828", "medium": "#E8710A", "low": "#F2A900",
