@@ -2,6 +2,7 @@
 
 - Busy (429) or broken (5xx) answers are retried after 2 s, then after 5 s.
 - If a model still fails, the same request goes to a similar fallback model.
+- All tries together stop after settings.AI_TOTAL_S seconds.
 - Every answer is cached on disk, so running the same check again costs nothing.
 - The API key is read from the environment at call time and is never logged or returned.
 """
@@ -35,7 +36,7 @@ def _content(parts: list) -> list:
     return out
 
 
-def _http_post(model: str, parts: list, max_tokens: int):
+def _http_post(model: str, parts: list, max_tokens: int, timeout=None):
     """One HTTP request. Returns (status code or None for a network error, json or None)."""
     body = {
         "model": model,
@@ -47,7 +48,7 @@ def _http_post(model: str, parts: list, max_tokens: int):
     }
     headers = {"Authorization": f"Bearer {settings.api_key()}", "X-Title": "Frugal Site Check"}
     try:
-        r = requests.post(URL, json=body, headers=headers, timeout=settings.AI_TIMEOUT_S)
+        r = requests.post(URL, json=body, headers=headers, timeout=timeout or settings.AI_TIMEOUT_S)
     except requests.RequestException:
         return None, None
     try:
@@ -79,13 +80,15 @@ def _from_cache(hit: dict) -> dict:
 
 
 def ask(model: str, parts: list, max_tokens: int, post=None, sleep=time.sleep,
-        use_cache: bool = True) -> dict:
+        use_cache: bool = True, clock=time.monotonic) -> dict:
     """Sends text and JPEG images (in order) and returns
     {"text", "model", "tokens_in", "tokens_out", "usd", "billed", "cached", "attempts"},
     plus "first_run_usd", "first_run_tokens_in/out" when the answer came from the cache.
     use_cache=False skips reading the cache (a fresh, paid answer) but still saves it.
-    Raises AIError when every model in the chain failed."""
-    post = post or _http_post
+    Raises AIError when every model in the chain failed or the time budget ran out."""
+    deadline = clock() + settings.AI_TOTAL_S
+    # A request may not run past the deadline either.
+    post = post or (lambda m, p, t: _http_post(m, p, t, timeout=max(1.0, deadline - clock())))
     chain = [model] + settings.FALLBACKS.get(model, [])
     key = cache.make_key("v1", model, max_tokens, *parts)
     hit = cache.get("ai", key) if use_cache else None
@@ -95,6 +98,10 @@ def ask(model: str, parts: list, max_tokens: int, post=None, sleep=time.sleep,
     for m in chain:
         waits = (0,) + tuple(settings.RETRY_WAITS_S)
         for wait in waits:
+            if clock() + wait >= deadline:
+                attempts.append({"model": m, "status": "out of time"})
+                raise AIError("No model answered in time: "
+                              + ", ".join(f"{a['model']} {a['status']}" for a in attempts))
             if wait:
                 sleep(wait)
             status, data = post(m, parts, max_tokens)

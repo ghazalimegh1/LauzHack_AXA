@@ -169,3 +169,15 @@ def test_boxes_outside_the_picture_are_clamped():
     objs, _ = vision.read_answer('{"o":[{"f":0,"t":"glass_roof","b":[-50,900,600,1200],"c":0.9}]}',
                                  ["glass_roof"], 1)
     assert objs[0]["box"] == [0.9, 0.0, 1.0, 0.6]
+
+
+def test_gives_up_when_the_time_budget_is_spent():
+    # Each fake request "takes" 40 s, like a dead network waiting for its timeout.
+    now = [0.0]
+    def slow(model, parts, max_tokens):
+        now[0] += 40
+        return None, None
+    with pytest.raises(ai.AIError, match="in time"):
+        ai.ask(settings.CHEAP_MODEL, ["slow"], 100, post=slow, sleep=lambda s: None,
+               clock=lambda: now[0], use_cache=False)
+    assert now[0] <= settings.AI_TOTAL_S + 40   # stopped, instead of 9 tries x 40 s

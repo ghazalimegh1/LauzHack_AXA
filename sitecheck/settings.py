@@ -56,6 +56,9 @@ FALLBACKS = {
 RETRY_WAITS_S = (2, 5)      # wait 2 s, then 5 s, before giving up on a model
 HTTP_TIMEOUT_S = 25
 AI_TIMEOUT_S = 60
+# All tries for one question together stop after this, so a dead network cannot hold the
+# queue for minutes (3 models x 3 tries x 60 s was up to 9 minutes).
+AI_TOTAL_S = 90
 
 # USD per 1 million tokens (input, output), read from https://openrouter.ai/api/v1/models
 # on 2026-11-21. OpenRouter also reports the real cost of every call; these prices are
