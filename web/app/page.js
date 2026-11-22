@@ -7,12 +7,13 @@ import CheckForm, { Running } from "../components/CheckForm";
 import { HazardChips, LaterList, NowList, counted } from "../components/Result";
 import { Footer, Hero } from "../components/Shell";
 import Storm from "../components/Storm";
+import Story from "../components/Story";
 import { follow, getLatest, img, startCheck } from "../lib/api";
 
-function Start({ onSubmit, error }) {
+function Start({ onSubmit, error, onLogo }) {
   return (
     <>
-      <Hero title="What would a storm hit first?">
+      <Hero title="What would a storm hit first?" onLogo={onLogo}>
         <p className="lead reveal">
           Film a short walk around your business site. We compare it with the official Swiss hail
           and flood maps and show you what to protect first.
@@ -27,7 +28,7 @@ function Start({ onSubmit, error }) {
   );
 }
 
-function Result({ job, onAgain }) {
+function Result({ job, onAgain, onLogo }) {
   const r = job.result;
   const todo = counted(r).slice(0, 5);
   const unsure = r.uncertain_count || 0;
@@ -35,7 +36,7 @@ function Result({ job, onAgain }) {
 
   return (
     <>
-      <Hero title={r.action.headline}>
+      <Hero title={r.action.headline} onLogo={onLogo}>
         <p className="place reveal">{r.address.label}</p>
         <HazardChips hazards={r.hazards} />
       </Hero>
@@ -122,6 +123,9 @@ export default function CustomerPage() {
   const [view, setView] = useState("loading");
   const [job, setJob] = useState(null);
   const [error, setError] = useState("");
+  // The AXA logo opens the same problem/solution slides as on the jury page.
+  const [story, setStory] = useState(false);
+  const openStory = () => setStory(true);
   const stop = useRef(() => {});
 
   useEffect(() => {
@@ -160,11 +164,12 @@ export default function CustomerPage() {
 
   return (
     <main>
-      {view === "loading" && <Hero title="What would a storm hit first?" />}
-      {view === "start" && <Start onSubmit={submit} error={error} />}
+      {story && <Story onClose={() => setStory(false)} />}
+      {view === "loading" && <Hero title="What would a storm hit first?" onLogo={openStory} />}
+      {view === "start" && <Start onSubmit={submit} error={error} onLogo={openStory} />}
       {view === "running" && (
         <>
-          <Hero title="Checking your site">
+          <Hero title="Checking your site" onLogo={openStory}>
             <p className="lead">We are reading the hazard maps and looking at your video.</p>
           </Hero>
           <section className="band">
@@ -177,6 +182,7 @@ export default function CustomerPage() {
       {view === "result" && job && (
         <Result
           job={job}
+          onLogo={openStory}
           onAgain={() => {
             setError("");
             setView("start");

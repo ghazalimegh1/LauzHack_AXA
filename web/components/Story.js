@@ -1,6 +1,6 @@
 "use client";
 
-// The AXA logo on the jury page opens this two-part story (problem, then solution).
+// The AXA logo (customer and jury page) opens this two-part story (problem, then solution).
 // Charts and drawings are hand-made SVG/CSS: no chart library, we are the frugal project.
 // Every number comes from the DATA the team supplied (sources printed under each chart).
 
