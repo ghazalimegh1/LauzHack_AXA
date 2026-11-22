@@ -24,7 +24,7 @@ def test_four_near_identical_boxes_in_one_frame_become_one():
 
 def test_different_kinds_or_places_stay_apart():
     finds = [find(0, 0.0, "glass_roof", [0.1, 0.1, 0.5, 0.5], 0.8),
-             find(0, 0.0, "external_blinds", [0.1, 0.1, 0.5, 0.5], 0.7),   # same box, other kind
+             find(0, 0.0, "solar_panel", [0.1, 0.1, 0.5, 0.5], 0.7),   # same box, other kind
              find(0, 0.0, "glass_roof", [0.6, 0.6, 0.9, 0.9], 0.8)]        # same kind, elsewhere
     kept, dropped = merge.merge(finds)
     assert dropped == 0 and len(kept) == 3

@@ -34,7 +34,7 @@ def test_vehicle_is_high_wherever_hail_is_at_least_medium():
 
 def test_map_decides_what_the_ai_looks_for():
     kinds = catalogue.kinds_to_ask({"hail": 1, "water": 0}, detector_on=True)
-    assert set(kinds) == {"glass_roof", "solar_panel", "external_blinds", "outdoor_goods"}
+    assert set(kinds) == {"glass_roof", "solar_panel", "outdoor_goods"}
     assert "vehicle" in catalogue.kinds_to_ask({"hail": 1, "water": 0}, detector_on=False)
     assert catalogue.kinds_to_ask({"hail": 0, "water": 0}, detector_on=True) == []
     water = catalogue.kinds_to_ask({"hail": 0, "water": 2}, detector_on=True)
@@ -65,6 +65,19 @@ def test_weak_points_group_by_kind_and_keep_uncertain_apart():
     solar = next(p for p in points if p["kind"] == "solar_panel")
     assert solar["status"] == "uncertain"
     assert names[-1] == "solar_panel"                # uncertain ones come last
+
+
+def test_cars_side_by_side_share_one_entry_other_pictures_get_their_own():
+    lv = {"hail": 1, "water": 0}
+    found = [rules.score_finding(f, lv) for f in [
+        {**finding("vehicle", 0.9, "local detector", t=13.5, frame=2, fid=0), "detail": "car"},
+        {**finding("vehicle", 0.8, "local detector", t=13.5, frame=2, fid=1), "detail": "van"},
+        {**finding("vehicle", 0.8, "local detector", t=0.0, frame=0, fid=2), "detail": "car"},
+    ]]
+    seen = rules.weak_points(found, lv)[0]["sightings"]
+    assert [(s["frame"], s["count"]) for s in seen] == [(0, 1), (2, 2)]   # in the order seen
+    assert seen[1]["details"] == ["car", "van"]
+    assert seen[1]["box"] == [0.1, 0.1, 0.3, 0.3]
 
 
 def test_site_action():

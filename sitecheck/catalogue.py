@@ -6,6 +6,7 @@ The weights are our team's assumption, written down here so an insurer can tune 
 from __future__ import annotations
 
 KINDS = {
+    # External blinds / awnings are left out on purpose (team decision): never looked for.
     # ---------- hail ----------
     "vehicle": dict(
         hazard="hail", weight=4, name="Vehicle parked outside",
@@ -25,12 +26,6 @@ KINDS = {
         why="Panels are exposed and costly; hail cracks their glass surface.",
         now="Take dated photos of the panels so their condition is documented.",
         later="Choose panels with a high hail resistance class at the next renewal."),
-    "external_blinds": dict(
-        hazard="hail", weight=2, name="External blinds / awnings",
-        find="slat blinds or louvres on the outside of windows (up, down or half down), roller shutters or fabric awnings",
-        why="Extended blinds and awnings are easily torn or dented by hail.",
-        now="Pull in all external blinds and awnings.",
-        later="Let the blinds retract automatically when a hail warning comes in."),
     "outdoor_goods": dict(
         hazard="hail", weight=2, name="Goods or machines outside",
         find="pallets, stored goods, building materials, containers, machines or equipment standing outdoors (not bicycles, scooters, bins or planters)",

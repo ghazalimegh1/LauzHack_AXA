@@ -59,11 +59,26 @@ def weak_points(findings: list, levels: dict) -> list:
             # the plain names the AI used, e.g. "pallets, machine"
             "details": sorted({f["detail"] for f in pool if f.get("detail")}),
             "seen_at": sorted({round(f["t"], 1) for f in pool}),
+            # one entry per key frame: things standing side by side in one picture share an
+            # entry, things seen in different pictures (e.g. other cars) each get their own
+            "sightings": _sightings(pool),
             "source": best["source"],
             "why": item["why"], "now": item["now"], "later": item["later"],
         })
     out.sort(key=lambda w: (w["status"] != "counted", -w["score"], -w["confidence"]))
     return out
+
+
+def _sightings(pool: list) -> list:
+    frames = {}
+    for f in pool:
+        frames.setdefault(f["frame"], []).append(f)
+    # "box" spans all of them, so the page can centre the picture on the cars
+    return [{"frame": fr, "t": min(f["t"] for f in fs), "count": len(fs),
+             "details": sorted({f["detail"] for f in fs if f.get("detail")}),
+             "box": [min(f["box"][0] for f in fs), min(f["box"][1] for f in fs),
+                     max(f["box"][2] for f in fs), max(f["box"][3] for f in fs)]}
+            for fr, fs in sorted(frames.items(), key=lambda kv: min(f["t"] for f in kv[1]))]
 
 
 def decide(points: list, hazards: dict) -> dict:

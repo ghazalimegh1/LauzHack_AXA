@@ -29,12 +29,41 @@ export function counted(result) {
   return (result.weak_points || []).filter((w) => w.status === "counted");
 }
 
+// The thumbnail shows only part of the frame: aim it at the middle of the cars' box.
+function focus(box) {
+  if (!box) return "center";
+  const pc = (v) => `${Math.round(Math.min(1, Math.max(0, v)) * 100)}%`;
+  return `${pc((box[0] + box[2]) / 2)} ${pc((box[1] + box[3]) / 2)}`;
+}
+
 // "Do this before a storm": one row per thing found, with its close-up from the video,
 // its name, the risk tag and the quick action (the team's earlier row design).
 export function NowList({ points, jobId }) {
+  // Parked vehicles: one row per picture they were seen in, so different cars are each
+  // named; cars standing side by side in one picture share their row.
+  const rows = points.flatMap((w) =>
+    w.kind === "vehicle" && w.sightings && w.sightings.length > 0
+      ? w.sightings.map((s) => ({ ...w, sighting: s }))
+      : [w]);
   return (
     <ol className="now">
-      {points.map((w, i) => (
+      {rows.map((w, i) => w.sighting ? (
+        <li className="now-card reveal" key={`${w.kind}-${w.sighting.frame}`} style={{ animationDelay: `${i * 60}ms` }}>
+          <img src={img.keyframe(jobId, w.sighting.frame)} style={{ objectPosition: focus(w.sighting.box) }}
+            alt={`${w.name} seen at ${clock(w.sighting.t)} in your video`} loading="lazy" />
+          <div>
+            <p className="now-title">
+              {w.name}{w.sighting.count > 1 ? ` (${w.sighting.count} side by side)` : ""}{" "}
+              <span className={`tag ${w.label}`}>{w.label} risk</span>
+            </p>
+            <p className="quiet">
+              Seen at {clock(w.sighting.t)} in your video
+              {w.sighting.details.length > 0 ? ` · ${w.sighting.details.join(", ")}` : ""}
+            </p>
+            <p>{w.now}</p>
+          </div>
+        </li>
+      ) : (
         <li className="now-card reveal" key={w.kind} style={{ animationDelay: `${i * 60}ms` }}>
           {/* No clear close-up: show the label alone rather than a misleading picture. */}
           {w.photo != null ? (
