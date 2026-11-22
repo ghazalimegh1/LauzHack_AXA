@@ -9,7 +9,10 @@ about a tenth of a US cent per check.
 
 ## Start it
 
-You need Python 3.9 with the `.venv` folder, Node.js, and an OpenRouter key.
+You need Python 3.9, Node.js, and an OpenRouter key. The Python packages live in
+`~/.venvs/frugal-site-check`, outside this folder: the project sits in an iCloud-synced
+folder, and iCloud emptied the files of the old `.venv` here (the server then failed with
+a misleading "address service is not answering").
 
 1. Put the key in a file called `.env` in this folder (copy `.env.example`):
    `OPENROUTER_API_KEY=...`. `.env` is ignored by git and is never committed.
@@ -22,24 +25,26 @@ You need Python 3.9 with the `.venv` folder, Node.js, and an OpenRouter key.
 3. Start the server:
 
    ```bash
-   .venv/bin/python -m uvicorn server:app --port 8000
+   ~/.venvs/frugal-site-check/bin/python -m uvicorn server:app --port 8000
    ```
 
 4. Open http://localhost:8000.
 
-First time only: `.venv/bin/pip install -r requirements.txt`. The free detector needs
+First time only (same package versions as ours):
+`python3 -m venv ~/.venvs/frugal-site-check && ~/.venvs/frugal-site-check/bin/pip install -r requirements.txt -c requirements-lock.txt`. The free detector needs
 `models/yolo11n.pt` (5 MB, not in git); ultralytics downloads it if it is missing:
-`.venv/bin/python -c "from ultralytics import YOLO; YOLO('models/yolo11n.pt')"`.
+`~/.venvs/frugal-site-check/bin/python -c "from ultralytics import YOLO; YOLO('models/yolo11n.pt')"`.
 
 If `npm run build` sits at 0% CPU without printing anything: the project lives in an
 iCloud-synced folder, and iCloud may have moved the files in `web/node_modules` to the cloud
 (only placeholders stay on disk, and reading one waits for a download). Fix: `cd web && npm ci`
-(reinstalls them from `package-lock.json` in a few seconds), then build again.
+(reinstalls them from `package-lock.json` in a few seconds), then build again. If the website's own
+source files are placeholders too, reading each one once (for example with `cat`) brought them back for us.
 
 Tests (no internet, no AI cost):
 
 ```bash
-.venv/bin/python -m pytest -q
+~/.venvs/frugal-site-check/bin/python -m pytest -q
 ```
 
 ## The two pages
