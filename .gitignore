@@ -2,7 +2,9 @@
 .env
 # local data and caches
 cache/
-models/
+# the free detector (5.6 MB) ships with the project; other model files stay local
+models/*
+!models/yolo11n.pt
 eval/
 *.MOV
 *.mov

@@ -32,7 +32,8 @@ a misleading "address service is not answering").
 
 First time only (same package versions as ours):
 `python3 -m venv ~/.venvs/frugal-site-check && ~/.venvs/frugal-site-check/bin/pip install -r requirements.txt -c requirements-lock.txt`. The free detector needs
-`models/yolo11n.pt` (5 MB, not in git); ultralytics downloads it if it is missing:
+`models/yolo11n.pt` (5.6 MB, the official Ultralytics YOLO11n file); it is in git, so a
+pull brings it. If it is ever missing, ultralytics downloads it again:
 `~/.venvs/frugal-site-check/bin/python -c "from ultralytics import YOLO; YOLO('models/yolo11n.pt')"`.
 
 If `npm run build` sits at 0% CPU without printing anything: the project lives in an
