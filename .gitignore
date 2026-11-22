@@ -1,11 +1,11 @@
 # secrets
 .env
+.env.example
 # local data and caches
 cache/
-# the free detector (5.6 MB) ships with the project; other model files stay local
-models/*
-!models/yolo11n.pt
+models/
 eval/
+.pytest-tmp/
 *.MOV
 *.mov
 *.mp4
@@ -19,3 +19,4 @@ web/.next/
 web/out/
 web/next-env.d.ts
 .DS_Store
+.vscode/
