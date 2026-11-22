@@ -393,8 +393,9 @@ export default function DetailsPage() {
       <Hero title="How the check works" toplink={<a className="toplink" href="/">← Customer view</a>}
         onLogo={() => setStory(true)}>
         <p className="lead reveal">
-          Free code does most of the work: the official hazard maps, picking sharp key frames, finding
-          cars and blurring people on this computer. Paid AI only looks where the map says it matters.
+          Free steps come first: official hazard maps, sharpest frames, car detection, and blurring of
+          people. Then one cheap AI call checks a few frames, and only for the risks the map flags at
+          this address.
         </p>
         {r && (
           <>
