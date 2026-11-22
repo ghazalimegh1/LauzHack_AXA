@@ -89,6 +89,7 @@ def test_analyze_poll_latest_and_images(client):
 def test_fresh_run_field_skips_the_cache(client):
     body = wait(client, upload(client, nocache="true"))
     assert body["result"]["options"]["use_cache"] is False
+    assert body["result"]["options"]["keyframes"] is None   # not chosen: from the video length
     body = wait(client, upload(client, nocache="false"))
     assert body["result"]["options"]["use_cache"] is True
 

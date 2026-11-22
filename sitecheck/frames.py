@@ -183,6 +183,14 @@ def judge(samples: list) -> float:
     return med_s
 
 
+def auto_count(duration_s: float) -> int:
+    """How many key frames a video of this length gets: 6 up to 30 s, then one more per
+    started 10 s (31-40 s: 7, 41-50 s: 8, ...), at most 10."""
+    extra = max(0, round(duration_s) - settings.AUTO_BASE_S)   # whole seconds: 30.4 s is still 30
+    n = settings.KEYFRAMES_DEFAULT + math.ceil(extra / settings.AUTO_EXTRA_EVERY_S)
+    return min(settings.AUTO_MAX, n)
+
+
 def pick(samples: list, k: int) -> list:
     """Equal parts of the walk, best usable frame of each, no repeated views."""
     med_s = judge(samples)

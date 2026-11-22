@@ -148,7 +148,7 @@ def suggest(q: str = ""):
 async def analyze(
     address: str = Form(...),
     video: UploadFile = File(...),
-    keyframes: int = Form(settings.KEYFRAMES_DEFAULT),
+    keyframes: Optional[int] = Form(None),   # None = from the video's length
     detector: bool = Form(True),
     sim_hail: Optional[int] = Form(None),
     sim_water: Optional[int] = Form(None),

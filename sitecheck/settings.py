@@ -79,7 +79,12 @@ NAIVE_FRAME = (1280, 720)   # "HD" frame of the naive design in the comparison
 SAMPLES_PER_S = 2           # keep 2 frames per second of video
 MAX_SAMPLES = 360           # very long videos: wider spacing instead of more work
 KEYFRAMES_DEFAULT = 6
-KEYFRAMES_MIN, KEYFRAMES_MAX = 4, 15   # the product uses 6; up to 15 for experiments
+KEYFRAMES_MIN, KEYFRAMES_MAX = 4, 15   # the details page can choose any of these by hand
+# Automatic count (the normal case): a longer walk shows more of the site, so it gets more
+# frames, but slowly and with a cap, to stay frugal.
+AUTO_BASE_S = 30           # up to 30 s of video: KEYFRAMES_DEFAULT frames
+AUTO_EXTRA_EVERY_S = 10    # then one more frame per started 10 s
+AUTO_MAX = 10              # never more than this automatically
 WORK_PX = 960               # frames are kept at this size in memory
 
 # ---------------- AI answers ----------------

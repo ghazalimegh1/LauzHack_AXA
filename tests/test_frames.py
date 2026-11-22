@@ -107,3 +107,9 @@ def test_walking_smear_in_one_direction_counts_as_blurry():
     sharp = scene(4)
     smeared = cv2.blur(sharp, (25, 1))               # smeared left-right only
     assert frames.measure(smeared)["sharpness"] < 0.5 * frames.measure(sharp)["sharpness"]
+
+
+def test_longer_videos_get_a_few_more_frames_up_to_a_cap():
+    from sitecheck.frames import auto_count
+    assert [auto_count(s) for s in (5, 24, 30, 30.4, 31, 40, 41, 47, 70, 71, 300)] == \
+        [6, 6, 6, 6, 7, 7, 8, 8, 10, 10, 10]

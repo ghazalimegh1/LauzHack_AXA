@@ -19,10 +19,19 @@ function Settings({ value, onChange, info }) {
     <fieldset className="settings">
       <legend>Settings</legend>
       <div className="row">
-        <label htmlFor="kf">Key frames: <b>{value.keyframes}</b></label>
-        <input id="kf" type="range" min={k.min} max={k.max} value={value.keyframes}
-          onChange={(e) => set({ keyframes: Number(e.target.value) })} />
+        <label className="check">
+          <input type="checkbox" checked={value.auto} onChange={(e) => set({ auto: e.target.checked })} />
+          Key frames by video length (6 up to 30 s, one more per 10 s, at most 10)
+        </label>
       </div>
+      {/* Choosing by hand is for experiments; the product always uses the automatic count. */}
+      {!value.auto && (
+        <div className="row">
+          <label htmlFor="kf">Key frames: <b>{value.keyframes}</b></label>
+          <input id="kf" type="range" min={k.min} max={k.max} value={value.keyframes}
+            onChange={(e) => set({ keyframes: Number(e.target.value) })} />
+        </div>
+      )}
       <div className="row">
         <label className="check">
           <input type="checkbox" checked={value.detector} onChange={(e) => set({ detector: e.target.checked })} />
@@ -311,7 +320,7 @@ export default function DetailsPage() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState(null);
-  const [opts, setOpts] = useState({ keyframes: 6, detector: true, simulate: false, hail: 1, water: 1, nocache: false });
+  const [opts, setOpts] = useState({ auto: true, keyframes: 6, detector: true, simulate: false, hail: 1, water: 1, nocache: false });
   const stop = useRef(() => {});
 
   useEffect(() => {
@@ -327,7 +336,7 @@ export default function DetailsPage() {
     setError("");
     try {
       const { job_id: id } = await startCheck({
-        address, file, keyframes: opts.keyframes, detector: opts.detector, nocache: opts.nocache,
+        address, file, keyframes: opts.auto ? null : opts.keyframes, detector: opts.detector, nocache: opts.nocache,
         simulate: opts.simulate ? { hail: opts.hail, water: opts.water } : null,
       });
       setRunning({ id, stage: "Starting the check" });
@@ -379,7 +388,7 @@ export default function DetailsPage() {
             <div className="actions">
               <button type="button" className="button ghost" onClick={() => setShowForm(true)}>Analyse another video</button>
               <span className="quiet">
-                Showing the newest check: {r.settings.keyframes} key frames, detector {r.settings.detector ? "on" : "off"}
+                Showing the newest check: {r.settings.keyframes} key frames{r.settings.keyframes_auto ? " (by video length)" : ""}, detector {r.settings.detector ? "on" : "off"}
                 {r.settings.simulated ? ", simulated hazard levels" : ""}
                 {r.settings.use_cache === false ? ", fresh run (no cached AI answers)" : ""}.
               </span>

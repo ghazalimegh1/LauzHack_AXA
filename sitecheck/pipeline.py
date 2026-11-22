@@ -33,13 +33,16 @@ def _levels(hazards: dict) -> dict:
     return {k: (v["level"] if v.get("available") else 0) for k, v in hazards.items()}
 
 
-def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAULT,
+def run(video_path: str, address: str, keyframes=None,
         detector_on: bool = True, simulate=None, use_cache: bool = True,
         progress=lambda text: None, ask=ai.ask) -> tuple:
     """Returns (result dict for the website, images dict kept in server memory)."""
     started = time.perf_counter()
     ledger = Ledger()
-    keyframes = max(settings.KEYFRAMES_MIN, min(settings.KEYFRAMES_MAX, int(keyframes)))
+    # None = automatic, from the video's length (decided once the video is read)
+    auto = keyframes is None
+    if not auto:
+        keyframes = max(settings.KEYFRAMES_MIN, min(settings.KEYFRAMES_MAX, int(keyframes)))
 
     # 1) address and hazard maps (free)
     progress("Finding your address")
@@ -65,6 +68,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
     progress("Picking the sharpest frames from your video")
     with ledger.step("Pick key frames (sharpness, brightness, blur)") as row:
         samples, video_info = frames.read_samples(video_path)
+        if auto:
+            keyframes = frames.auto_count(video_info["duration_s"])
         picked = frames.pick(samples, keyframes)
         key_imgs, key_meta = [], []
         for i, s in enumerate(picked):
@@ -73,7 +78,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
             key_meta.append({"index": i, "sample": s.index, "t": round(s.t, 2),
                              "brightened": brightened, "width": img.shape[1],
                              "height": img.shape[0], "people": 0})
-        row["note"] = f"{len(samples)} sampled, {len(picked)} picked"
+        row["note"] = f"{len(samples)} sampled, {len(picked)} picked" + (
+            f" ({keyframes} for a {video_info['duration_s']:.0f} s video)" if auto else "")
     usable = sum(1 for s in samples if s.reason in ("", "same view", "sharper nearby"))
 
     # 3) free detector: vehicles + people, blur people (free)
@@ -220,7 +226,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "ai": ai_info,
         "ledger": ledger.rows,
         "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs), ai_info["status"]),
-        "settings": {"keyframes": keyframes, "detector": detector_on,
+        "settings": {"keyframes": keyframes, "keyframes_auto": auto, "detector": detector_on,
                      "simulated": bool(simulate), "use_cache": use_cache},
         "seconds": round(time.perf_counter() - started, 1),
     }
