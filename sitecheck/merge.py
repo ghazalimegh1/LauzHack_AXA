@@ -11,6 +11,8 @@ SAME_FRAME_IOU = 0.5     # two boxes of one kind overlapping this much in one fr
 SAME_FRAME_COVER = 0.8   # ...or a small box lying almost fully inside a bigger one
 NEXT_FRAME_IOU = 0.3     # camera moves between frames, so a looser overlap counts there
 NEXT_FRAME_GAP_S = 1.5   # only key frames this close in time can show the very same view
+COPY_TOLERANCE = 0.002   # 2 units on the AI's 0-1000 scale: the "same box" to the last digit
+DETECTOR = "local detector"
 
 
 def _area(b: list) -> float:
@@ -65,3 +67,30 @@ def merge(findings: list) -> tuple:
     kept, next_frame = _keep_best(kept, _same_next_frame)
     kept.sort(key=lambda f: order[id(f)])
     return kept, in_frame + next_frame
+
+
+def _copied(a: dict, b: dict) -> bool:
+    """Same kind, same box to the digit, on a key frame that shows a different view."""
+    return (a["kind"] == b["kind"] and a["frame"] != b["frame"]
+            and abs(a["t"] - b["t"]) > NEXT_FRAME_GAP_S
+            and max(abs(x - y) for x, y in zip(a["box"], b["box"])) <= COPY_TOLERANCE)
+
+
+def drop_copies(findings: list) -> tuple:
+    """Drop AI boxes copied from an earlier key frame. Returns (findings, number dropped).
+
+    Our test set showed the AI sometimes repeats its answer for one frame on a later frame,
+    box for box, although the later picture shows something else. Key frames are picked
+    to be different views, so a box identical to the digit is a copy, not a new find.
+    The first one is kept (it is where the model looked); the local detector measures
+    every frame itself, so its boxes are never treated as copies.
+    """
+    kept, dropped = [], 0
+    for f in sorted(findings, key=lambda x: x["t"]):
+        if f.get("source") != DETECTOR and any(
+                k.get("source") != DETECTOR and _copied(k, f) for k in kept):
+            dropped += 1
+        else:
+            kept.append(f)
+    gone = {id(f) for f in findings} - {id(f) for f in kept}
+    return [f for f in findings if id(f) not in gone], dropped

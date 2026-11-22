@@ -66,3 +66,26 @@ def test_unrecognisable_close_ups_get_no_picture():
     assert render.photo_ok(sharp, box)
     assert not render.photo_ok(smeared, box)                   # too blurred to recognise
     assert not render.photo_ok(sharp, [0.2, 0.2, 0.23, 0.6])   # too small (19 px wide)
+
+
+def ai(frame, t, kind, box, source="cheap model"):
+    return {**find(frame, t, kind, box, 0.7), "source": source}
+
+
+def test_box_copied_to_a_later_frame_is_dropped():
+    # Seen in our day video: the AI gave frame 4 the exact boxes of frame 3 (11 s earlier).
+    first = ai(3, 23.0, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])
+    copy = ai(4, 34.0, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])
+    kept, dropped = merge.drop_copies([copy, first])
+    assert dropped == 1 and kept == [first]                  # the earlier one is kept
+
+
+def test_real_finds_are_not_taken_for_copies():
+    a = ai(3, 23.0, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])
+    moved = ai(4, 34.0, "outdoor_goods", [0.50, 0.46, 0.999, 0.64])        # box differs
+    other = ai(4, 34.0, "glass_roof", [0.49, 0.46, 0.999, 0.64])           # other kind
+    close = ai(2, 22.5, "outdoor_goods", [0.49, 0.46, 0.999, 0.64])        # 0.5 s before: merge decides
+    car1 = ai(0, 0.0, "vehicle", [0.1, 0.1, 0.2, 0.2], source="local detector")
+    car2 = ai(2, 13.0, "vehicle", [0.1, 0.1, 0.2, 0.2], source="local detector")
+    kept, dropped = merge.drop_copies([a, moved, other, close, car1, car2])
+    assert dropped == 0 and len(kept) == 6

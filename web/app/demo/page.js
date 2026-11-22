@@ -234,6 +234,9 @@ function FreePart({ r }) {
   if (r.duplicates_removed != null) {
     steps.push([r.duplicates_removed, r.duplicates_removed === 1 ? "repeated find merged" : "repeated finds merged"]);
   }
+  if (r.copies_dropped != null) {
+    steps.push([r.copies_dropped, r.copies_dropped === 1 ? "copied AI box dropped" : "copied AI boxes dropped"]);
+  }
   return (
     <Part title="2 · Free steps first"
       intro="All of this runs on this computer with no AI and no cost.">

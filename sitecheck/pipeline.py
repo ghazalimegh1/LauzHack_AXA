@@ -173,7 +173,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
     # 7) rules (free)
     progress("Putting your results together")
     with ledger.step("Apply rules (importance = weight x hazard level)") as row:
-        # One object = one find: repeats in a frame or in the next key frame are dropped.
+        # Boxes the AI copied from an earlier frame go first, then one object = one find.
+        findings, copies = merge.drop_copies(findings)
         findings, repeats = merge.merge(findings)
         findings = [rules.score_finding(f, levels) for f in findings]
         # Uncertain finds are not shown anywhere (team decision): only counted here, so the
@@ -190,7 +191,8 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
             f["photo"] = render.photo_ok(key_imgs[f["frame"]], f["box"])
         points = rules.weak_points(findings, levels)
         action = rules.decide(points, hazards)
-        row["note"] = action["text"] + (f" · {repeats} repeated find(s) merged" if repeats else "")
+        row["note"] = (action["text"] + (f" · {repeats} repeated find(s) merged" if repeats else "")
+                       + (f" · {copies} copied box(es) dropped" if copies else ""))
 
     result = {
         "address": place,
@@ -212,6 +214,7 @@ def run(video_path: str, address: str, keyframes: int = settings.KEYFRAMES_DEFAU
         "people": people,
         "uncertain_count": len(unsure),
         "duplicates_removed": repeats,
+        "copies_dropped": copies,
         "ai": ai_info,
         "ledger": ledger.rows,
         "cost": _costs(ledger.rows, sent_sizes, video_info, len(key_imgs), ai_info["status"]),
