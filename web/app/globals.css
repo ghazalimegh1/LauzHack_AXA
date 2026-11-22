@@ -180,6 +180,7 @@ p { margin: 0; }
 .clock div { display: grid; gap: 4px; }
 .clock b { font: 700 clamp(2.6rem, 7vw, 5rem)/1 var(--head); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .clock span { font: 500 0.72rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; }
+.storm-none { font: 700 clamp(2rem, 5vw, 3.4rem)/1.05 var(--head); letter-spacing: -0.02em; margin: 0 0 10px; }
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(255, 255, 255, 0.2); }
 .facts div { background: var(--blue); padding: 14px 16px; display: grid; gap: 4px; }
 .facts .label { color: rgba(255, 255, 255, 0.7); }

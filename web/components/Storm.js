@@ -49,9 +49,10 @@ export default function Storm({ jobId }) {
     body = <p className="lead-muted">Loading the forecast for your address…</p>;
   } else if (!storm || over) {
     body = (
-      <p className="lead-muted">
-        No storm is expected at your site in the next {data.hours || 48} hours. Good moment to do the steps above.
-      </p>
+      <div>
+        <p className="storm-none">No storm coming.</p>
+        <p className="lead-muted">The forecast shows no storm at your site in the next {data.hours || 48} hours.</p>
+      </div>
     );
   } else {
     body = (

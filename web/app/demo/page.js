@@ -8,7 +8,7 @@ import { HazardChips } from "../../components/Result";
 import { Footer, Hero } from "../../components/Shell";
 import Story from "../../components/Story";
 import { follow, getInfo, getLatest, img, startCheck } from "../../lib/api";
-import { RISK, clock, ms, pct, tokens, usd } from "../../lib/format";
+import { RISK, clock, pct, usd } from "../../lib/format";
 
 const SOURCE = { "local detector": "Local detector (free)", "cheap model": "Cheap model", "strong model": "Strong model" };
 
@@ -168,9 +168,9 @@ const HAZARD_NAME = { hail: "hail", water: "water" };
 function MapPart({ r }) {
   const rows = [["Hail", r.hazards.hail], ["Water (heavy rain, floods)", r.hazards.water]];
   const missing = Object.keys(r.hazards).filter((k) => !r.hazards[k].available);
-  // Say plainly when the listed kinds were never looked at, so "not seen" never reads as "safe".
-  const notRun = { failed: "The AI did not answer, so these were not checked.",
-    off: "The AI was not available, so these were not checked." }[r.ai.status];
+  // Say plainly when the video was never looked at, so "not seen" never reads as "safe".
+  const notRun = { failed: "The AI did not answer, so the video was not checked by the AI.",
+    off: "The AI was not available, so the video was not checked by the AI." }[r.ai.status];
   return (
     <Part title="1 · How the map decided"
       intro="The official map level decides what the AI looks for; a hazard at level 0 is not searched for, and a map that did not answer is not counted as low.">
@@ -186,27 +186,12 @@ function MapPart({ r }) {
           </div>
         ))}
       </div>
-      <h4 className="frugal-sub">What the AI was asked to look for</h4>
-      <ul className="asked">
-        {r.asked.length === 0 && (
-          <li className="off">
-            {missing.length
-              ? `Nothing: the ${missing.map((k) => HAZARD_NAME[k] || k).join(" and ")} ${missing.length > 1 ? "maps" : "map"} did not answer and no other hazard is at level 1 or higher, so nothing was searched for. This does not mean the risk is low.`
-              : "Nothing: no hazard is at level 1 or higher here, so no AI was needed."}
-          </li>
-        )}
-        {r.asked.map((a) => (
-          <li key={a.kind}>
-            <b>{a.name}</b>
-            <span className="quiet">{a.find} · weight {a.weight} × {a.hazard} level</span>
-          </li>
-        ))}
-        {r.not_asked.map((a) => (
-          <li key={a.kind} className="off">
-            <span>{a.name}: skipped, {a.reason}</span>
-          </li>
-        ))}
-      </ul>
+      {/* The list of kinds is not shown (team decision), but "not checked" must never read as "safe". */}
+      {r.asked.length === 0 && missing.length > 0 && (
+        <p className="error" style={{ marginTop: 12 }}>
+          {`The ${missing.map((k) => HAZARD_NAME[k] || k).join(" and ")} ${missing.length > 1 ? "maps" : "map"} did not answer, so nothing was searched for. This does not mean the risk is low.`}
+        </p>
+      )}
       {r.asked.length > 0 && notRun && <p className="error" style={{ marginTop: 12 }}>{notRun}</p>}
     </Part>
   );
@@ -299,73 +284,6 @@ function CostPart({ r }) {
           </div>
         ))}
       </div>
-      <p className="quiet" style={{ marginTop: 14 }}>
-        All three bars are estimates made with the same rule, so they compare fairly; the billed cost above is measured separately. {c.rule}
-      </p>
-    </Part>
-  );
-}
-
-function ledgerCost(row) {
-  if (row.type !== "AI") return "free";
-  if (!row.model) return "no answer";
-  // A reused answer costs nothing now, but a bare "$0" looks fake: say why, and what it cost once.
-  if (row.cached) {
-    return row.first_run_usd != null
-      ? `$0 extra (reused; first run ${usd(row.first_run_usd)})`
-      : "$0 extra (reused answer)";
-  }
-  return usd(row.usd);
-}
-
-// Total of the "this run" column, with the same explanation when answers were reused.
-function ledgerTotal(c, thisRun) {
-  if (!c.ai_calls) return "free";
-  if (c.any_cached && c.all_measured) return `${usd(thisRun)} extra (measured cost ${usd(c.measured_usd)})`;
-  if (c.any_cached) return `${usd(thisRun)} extra (answers reused)`;
-  return usd(thisRun);
-}
-
-function ledgerTokens(row) {
-  if (row.type !== "AI" || !row.model) return "–";
-  if (row.cached) {
-    const first = row.first_run_tokens_in != null ? ` (first run ${tokens(row.first_run_tokens_in)} / ${tokens(row.first_run_tokens_out)})` : "";
-    return `reused${first}`;
-  }
-  return `${tokens(row.tokens_in)} / ${tokens(row.tokens_out)}`;
-}
-
-function LedgerPart({ r }) {
-  const c = r.cost;
-  const thisRun = c.this_run_usd != null ? c.this_run_usd : r.ledger.reduce((a, x) => a + x.usd, 0);
-  return (
-    <Part title="4 · Ledger" intro="Every step with its time, tokens and what this run paid.">
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Step</th><th>Type</th><th className="num">Tokens in / out</th><th className="num">Cost this run</th><th className="num">Time</th></tr>
-          </thead>
-          <tbody>
-            {r.ledger.map((row) => (
-              <tr key={row.step}>
-                <td>{row.step}{row.model ? <><br /><small className="quiet">{row.model}</small></> : null}{row.note ? <><br /><small className="quiet">{row.note}</small></> : null}</td>
-                <td>{row.type}</td>
-                <td className="num">{ledgerTokens(row)}</td>
-                <td className="num">{ledgerCost(row)}</td>
-                <td className="num">{ms(row.ms)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2}>Total</td>
-              <td className="num">{tokens(r.ledger.reduce((a, x) => a + x.tokens_in, 0))} / {tokens(r.ledger.reduce((a, x) => a + x.tokens_out, 0))}</td>
-              <td className="num">{ledgerTotal(c, thisRun)}</td>
-              <td className="num">{ms(r.ledger.reduce((a, x) => a + x.ms, 0))}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
     </Part>
   );
 }
@@ -375,7 +293,7 @@ function ConfidencePart({ r }) {
   return (
     <details className="frugal-part frugal-details">
       <summary>
-        <h3>5 · Detection confidence</h3>
+        <h3>4 · Detection confidence</h3>
         <span className="quiet">{n === 0 ? "no objects found" : `${n} ${n === 1 ? "object" : "objects"} found`}</span>
       </summary>
       <p className="quiet frugal-intro">
@@ -418,7 +336,6 @@ function Frugal({ job }) {
       <MapPart r={r} />
       <FreePart r={r} />
       <CostPart r={r} />
-      <LedgerPart r={r} />
       <ConfidencePart r={r} />
     </Section>
   );

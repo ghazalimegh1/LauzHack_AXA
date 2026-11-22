@@ -42,7 +42,7 @@ def prompt(kinds: list, n: int) -> str:
             "u = list of frames too dark, blurred or blocked to judge; a clear frame without "
             "these objects is not unclear. At most 5 objects per frame. "
             "Reply with JSON only, no other text, e.g. "
-            f'{{"o":[{{"f":0,"t":"glass_roof","d":"skylight","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
+            f'{{"o":[{{"f":0,"t":"outdoor_goods","d":"pallets","b":{_BOX_EXAMPLE},"c":0.8}}],"u":[]}}')
 
 
 def parts_for(prompt_text: str, images: list) -> list:
