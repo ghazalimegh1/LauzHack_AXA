@@ -27,6 +27,8 @@ def test_thunderstorm_and_wind_storm():
     assert forecast.next_storm(hourly([95], [30]))["storm"]["kind"] == "thunderstorm"
     wind = forecast.next_storm(hourly([3, 3], [10, 65]))["storm"]
     assert wind["kind"] == "wind storm" and wind["severity"] == "strong"
+    breeze = forecast.next_storm(hourly([3], [55]))["storm"]
+    assert breeze["kind"] == "wind" and breeze["severity"] == "moderate"
     assert forecast.next_storm(hourly([96], [10]))["storm"]["severity"] == "strong"
     assert forecast.next_storm(hourly([95], [10]))["storm"]["severity"] == "moderate"
 

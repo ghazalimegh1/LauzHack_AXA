@@ -48,12 +48,15 @@ def next_storm(hourly: dict) -> dict:
     gust = max(r[2] or 0 for r in window)
     hail = "heavy" if 99 in codes else "slight" if 96 in codes else "none"
     thunder = max(codes) >= 95
-    kind = "hail storm" if hail != "none" else "thunderstorm" if thunder else "wind storm"
+    level = severity(hail, gust, thunder)
+    # Gusts alone at the lowest level are just "wind"; "wind storm" from "strong" up.
+    wind = "wind" if level == "moderate" else "wind storm"
+    kind = "hail storm" if hail != "none" else "thunderstorm" if thunder else wind
     return {"hours": len(rows), "storm": {
         "kind": kind,
         "starts": int(window[0][0]),
         "ends": int(window[-1][0]) + 3600,
-        "severity": severity(hail, gust, thunder),
+        "severity": level,
         "hail": hail,
         "gust_kmh": round(gust),
         "rain_mm": round(sum(r[3] or 0 for r in window), 1),

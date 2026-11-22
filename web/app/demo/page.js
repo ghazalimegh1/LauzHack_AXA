@@ -147,7 +147,7 @@ function Frames({ job }) {
         <img src={`/api/jobs/${job.id}/filmstrip.jpg`}
           alt={`All ${f.sampled} frames checked by free code; ${f.picked} picked, framed in green`} />
       </div>
-      <p className="quiet">Green = picked. Grey = skipped, with the reason. No AI in this step.</p>
+      <p className="quiet">Green = picked. Grey = skipped.</p>
     </Section>
   );
 }
@@ -230,7 +230,7 @@ function CostPart({ r }) {
         <span className="quiet">({line.note})</span>
       </p>
       <p className="quiet">
-        {c.ai_calls} AI {c.ai_calls === 1 ? "call" : "calls"}{models ? ` · ${models}` : ""} · whole check took {r.seconds} s
+        {c.ai_calls} AI {c.ai_calls === 1 ? "call" : "calls"}{models ? ` · ${models}` : ""}
       </p>
       <h4 className="frugal-sub">Estimated cost of three designs for this video</h4>
       <div className="bars">
