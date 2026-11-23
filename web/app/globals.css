@@ -85,9 +85,10 @@ p { margin: 0; }
 .hero h1 { max-width: 15ch; }
 .hero .lead { margin-top: 20px; max-width: 46ch; font-size: clamp(1.05rem, 1.6vw, 1.3rem); color: rgba(255, 255, 255, 0.86); }
 .hero .place { margin-top: 26px; font-size: 1.15rem; color: rgba(255, 255, 255, 0.92); }
-.pixels { position: absolute; right: calc(var(--gutter) + 8px); top: 50%; transform: translateY(-38%); z-index: 1; width: clamp(150px, 20vw, 270px); height: auto; pointer-events: none; }
-.pixels rect { animation: pixel 6s var(--ease) infinite alternate; }
-@keyframes pixel { 0%, 55% { opacity: 1; } 100% { opacity: 0.25; } }
+.pixels { position: absolute; right: calc(var(--gutter) + 8px); top: 50%; transform: translateY(-50%); z-index: 1; width: clamp(200px, 26vw, 400px); height: auto; pointer-events: none; }
+/* The letters stay readable: each block pulses from white to a light blue instead of fading out. */
+.pixels rect { fill: #FFFFFF; animation: pixel 6s var(--ease) infinite alternate; }
+@keyframes pixel { 0%, 55% { fill: #FFFFFF; } 100% { fill: #7C80E6; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .chip {
@@ -280,7 +281,7 @@ tfoot td { font-weight: 700; background: var(--paper); }
   .actions .button { width: auto; flex: 1 1 auto; }
   .lightbox .button { width: auto; }
   .running { align-items: flex-start; }
-  .pixels { width: 132px; top: auto; bottom: 20px; transform: none; opacity: 0.28; }
+  .pixels { width: 190px; top: auto; bottom: 20px; transform: none; opacity: 0.28; }
 }
 
 .lead-muted { font-size: clamp(1.1rem, 1.8vw, 1.35rem); color: rgba(255, 255, 255, 0.86); max-width: 52ch; }

@@ -14,20 +14,42 @@ export function Logo({ onOpen }) {
   );
 }
 
-// The pixel blocks of the blue band (the team's pattern from the earlier app).
-// "#" = white block, "o" = lighter blue block, "." = empty.
-const PATTERN = ["..#..#", ".#.#..", "#..o.#", ".#..#.", "o.#...", ".#..o#"];
+// The pixel blocks of the blue band, laid out as one line of letters: ΣΩΤΗΡΙΑ ("soteria",
+// Greek for safety and rescue), written as on the Roman mosaic, with a round sigma (C) and ω.
+// "#" = block, "." = empty; every letter is 5 blocks tall.
+const GLYPHS = {
+  C: [".##", "#..", "#..", "#..", ".##"],
+  ω: [".....", "#...#", "#.#.#", "#.#.#", ".#.#."],
+  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  H: ["#.#", "#.#", "###", "#.#", "#.#"],
+  P: ["##.", "#.#", "##.", "#..", "#.."],
+  I: ["#", "#", "#", "#", "#"],
+  A: [".#.", "#.#", "###", "#.#", "#.#"],
+};
+const WORD = ["C", "ω", "T", "H", "P", "I", "A"];
+const ROWS = 5;
+
+// Columns of the whole word, one empty column between letters.
+const LINE = WORD.flatMap((ch, i) => {
+  const g = GLYPHS[ch];
+  const cols = g[0].split("").map((_, x) => g.map((row) => row[x]));
+  return i === 0 ? cols : [Array(ROWS).fill("."), ...cols];
+});
 
 export function Pixels() {
-  const size = 40;
+  const size = 10;
+  const gap = 1.2;            // thin seams between the blocks, like mosaic stones
   const blocks = [];
-  PATTERN.forEach((row, y) => row.split("").forEach((c, x) => {
-    if (c !== ".") blocks.push([x, y, c === "#" ? "#FFFFFF" : "#3B3FD8"]);
+  LINE.forEach((col, x) => col.forEach((c, y) => {
+    if (c === "#") blocks.push([x, y]);
   }));
   return (
-    <svg className="pixels" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
-      {blocks.map(([x, y, fill], i) => (
-        <rect key={i} x={x * size} y={y * size} width={size} height={size} fill={fill}
+    <svg className="pixels" viewBox={`0 0 ${LINE.length * size} ${ROWS * size}`}
+      aria-hidden="true" focusable="false">
+      {blocks.map(([x, y], i) => (
+        // Colour and pulse come from globals.css; the delays make the blocks shimmer one by one.
+        <rect key={i} x={x * size + gap / 2} y={y * size + gap / 2}
+          width={size - gap} height={size - gap}
           style={{ animationDelay: `${(i * 0.53) % 4}s` }} />
       ))}
     </svg>
